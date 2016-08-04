@@ -11,18 +11,14 @@ import javax.swing.*;
 
 public class Display implements ActionListener {
     JFrame frame;
-    JMenuItem loadReplay;
-    JFileChooser fc = new JFileChooser();
     Game currentGame = null;
-    JTextArea gameBoard;
-    JTextField moveInputBox;
-    ArrayList<JLabelPiece> boardPieces = new ArrayList<JLabelPiece>();
+    ArrayList<JLabelPiece> boardPieces = new ArrayList<JLabelPiece>(); // list of pieces
     ArrayList<Component> pawnPromotionButtons = new ArrayList<Component>();
-    JLayeredPane boardLayers;
-    Box stuffHolder;
-    JLabel turnIndicator;
-    boolean rotated, autorotate;
-    JLabel boardDisplay;
+    JLayeredPane boardLayers; // Holds the board and the pieces
+    Box stuffHolder; // Upper level container for everything but the menu
+    JLabel turnIndicator; // displays whose turn it is
+    boolean rotated, autorotate; // true if the board is rotated / autorotate is on
+    JLabel boardDisplay; // JLabel that displays the board itself
     JButton autorotateButton;
     
     /**
@@ -76,6 +72,10 @@ public class Display implements ActionListener {
         return menubar;
     }
     
+    /**
+     * Sets up the board display
+     * @param stuffHolder A container for the display
+     */
     public void setUpGameBoardDisplay(){
         if (currentGame == null){
             //set up board with mouse listener
@@ -150,6 +150,9 @@ public class Display implements ActionListener {
         }
     }
     
+    /**
+     * Displays the pawn promotion dialogue and buttons
+     */
     public void setUpPawnPromotionButtons(){
         turnIndicator.setText("<html>&nbsp;Choose<br>&nbsp;&nbsp;piece<html>");
         pawnPromotionButtons.get(4).setVisible(true); // make promotionInterface visible
@@ -163,6 +166,9 @@ public class Display implements ActionListener {
         }
     }
     
+    /**
+     * Removes the pawn promotion dialogue and buttons
+     */
     public void removePawnPromotionButtons(){
         turnIndicator.setText("<html>&nbsp;" + 
                 currentGame.currentBoard.turn + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
@@ -178,34 +184,33 @@ public class Display implements ActionListener {
         System.out.println(e.getActionCommand());
         
         if (e.getActionCommand().equals("Load Replay")){
+            JFileChooser fc = new JFileChooser();
             int returnVal = fc.showOpenDialog(null);
             if (returnVal == JFileChooser.APPROVE_OPTION){
                 File file = fc.getSelectedFile();
                 System.out.println("you chose a file");
             }
+            
         } else if (e.getActionCommand().equals("Load Game")){
-                int returnVal = fc.showOpenDialog(null);
-                if (returnVal == JFileChooser.APPROVE_OPTION){
-                    File file = fc.getSelectedFile();
-                    System.out.println("you chose a file");
-                    if (currentGame != null && currentGame.inProgress == true){
-                        System.out.println("Load game over one in progress?");
-                        int reply = JOptionPane.showConfirmDialog(null, 
-                            "You have a game in progress. Are you sure you want to load a different one?", 
-                                "Load Game?",  JOptionPane.YES_NO_OPTION);
-                        if (reply == JOptionPane.NO_OPTION){
-                            return;
-                        }
+            JFileChooser fc = new JFileChooser();
+            int returnVal = fc.showOpenDialog(null);
+            if (returnVal == JFileChooser.APPROVE_OPTION){
+                File file = fc.getSelectedFile();
+                if (currentGame != null && currentGame.inProgress == true){
+                    int reply = JOptionPane.showConfirmDialog(null, 
+                        "You have a game in progress. Are you sure you want to load a different one?", 
+                            "Load Game?",  JOptionPane.YES_NO_OPTION);
+                    if (reply == JOptionPane.NO_OPTION){
+                        return;
                     }
-                    System.out.println("Loading Game");
-                    setUpGameBoardDisplay();
-                    currentGame = new Game(Game.getFenListFromFile(file));
-                    printBoard();
                 }
+                setUpGameBoardDisplay();
+                currentGame = new Game(Game.getFenListFromFile(file));
+                printBoard();
+            }
                     
         } else if (e.getActionCommand().equals("New Game")){
             if (currentGame != null && currentGame.inProgress == true){
-                System.out.println("Starting New Game over one in progress?");
                 int reply = JOptionPane.showConfirmDialog(null, 
                         "You have a game in progress. Are you sure you want to start a new one?", 
                         "New Game?",  JOptionPane.YES_NO_OPTION);
@@ -213,7 +218,6 @@ public class Display implements ActionListener {
                     return;
                 }
             }
-            System.out.println("Starting New Game");
             setUpGameBoardDisplay();
             currentGame = new Game();
             printBoard();
@@ -224,10 +228,10 @@ public class Display implements ActionListener {
                         "Complete pawn promotion first");
                 return;
             }
+            JFileChooser fc = new JFileChooser();
             int returnVal = fc.showSaveDialog(null);
             if (returnVal == JFileChooser.APPROVE_OPTION){
                 File dest = fc.getSelectedFile();
-                System.out.println("you chose " + dest);
                 boolean goodToGo = false;
                 try {
                     goodToGo = dest.createNewFile();
@@ -249,7 +253,13 @@ public class Display implements ActionListener {
         return input.length() == 1 && (c == 'r' || c == 'q'
                 || c == 'b' || c == 'h');
     }
-      
+    
+    /**
+     * Attempts a move given the starting and ending index in the fen of the piece being moved
+     * Updates the board display as necessary
+     * @param startingPosIndex Starting index
+     * @param endingPosIndex Ending index
+     */
     public void attemptMove(int startingPosIndex, int endingPosIndex){
         boolean moveSuccess = false;
         if (startingPosIndex > -1 && startingPosIndex <  64 &&
@@ -259,7 +269,6 @@ public class Display implements ActionListener {
             System.out.println(currentGame.currentBoard.turn);
         }
         if (moveSuccess){
-            //moveInputBox.setText("");
             if (currentGame.currentBoard.promotingPawn){
                 setUpPawnPromotionButtons();
             }
@@ -270,6 +279,9 @@ public class Display implements ActionListener {
         }
     }
     
+    /**
+     * Toggles rotation on the board
+     */
     public void toggleRotate(){
         rotated = !rotated;
         if (rotated){
@@ -280,64 +292,15 @@ public class Display implements ActionListener {
         printBoard();
     }
     
+    /**
+     * Toggles autorotation on the board
+     */
     public void toggleAutorotate(){
         autorotate = !autorotate;
         if (autorotate){
             autorotateButton.setIcon(new ImageIcon("autorotateon.png"));
         } else {
             autorotateButton.setIcon(new ImageIcon("autorotateoff.png"));
-        }
-        //printBoard();
-    }
-    
-    /**
-     * Parses a coordinate pair as a string and returns it's fen index,
-     * or -1 if the coordinate pair has no corresponding fen index.
-     * @param input The coordinate pair to be parsed. "a2" for instance
-     * @return the fenIndex of the input
-     */
-    public int parseInput(String input){
-        String stringX = input.substring(0, 1);
-        String stringY = input.substring(1, 2);
-        int numX, numY;
-        switch (stringX) {
-            case "a":
-                numX = 1;
-                break;
-            case "b":
-                numX = 2;
-                break;
-            case "c":
-                numX = 3;
-                break;
-            case "d":
-                numX = 4;
-                break;
-            case "e":
-                numX = 5;
-                break;
-            case "f":
-                numX = 6;
-                break;
-            case "g":
-                numX = 7;
-                break;
-            case "h":
-                numX = 8;
-                break;
-            default:
-                numX = -1;
-        }
-        try {
-            numY = Integer.parseInt(stringY);
-        } catch (NumberFormatException e){
-            numY = -1;
-        }
-        if (numY == -1 || numX == -1){
-            return -1;
-        } else {
-            Position p = new Position(numY, numX);
-            return currentGame.currentBoard.fenIndex(p);
         }
     }
     
@@ -411,76 +374,3 @@ public class Display implements ActionListener {
         Display disp = new Display();
     }
 }
-
-/*
-gameBoard = new JTextArea(10, 20);
-gameBoard.setEditable(false);
-gameBoard.setFont(new Font("Courier New", Font.PLAIN, 40));
-stuffHolder.add(gameBoard, BorderLayout.SOUTH);
-*/
-
-/*
-char[] rows = {'1', '2', '3', '4', '5', '6', '7', '8'};
-String toPrint = "";
-for (int i = 7; i >= 0; i--){
-    toPrint += rows[i];
-    for (int j = 0; j < 8; j++){
-        toPrint += uneditedFen.charAt(i * 8 + j);
-    }
-    toPrint += "\n";
-}
-toPrint += "0abcdefgh";
-gameBoard.setText(toPrint);
-*/
-
-/**
- * Attempts to make a move given string input. If successful,
- * the board is updated.
- * @param input the the input to be parsed and used as the move
- */
-/*
-public void attemptMove(String input){
-    if (input.length() != 5){
-        return;
-    }
-    int startingPosIndex = parseInput(input.toLowerCase());
-    int endingPosIndex = parseInput(input.substring(3, 5).toLowerCase());
-    boolean moveSuccess = false;
-    if (startingPosIndex != -1 && endingPosIndex != -1){
-        moveSuccess = currentGame.attemptMove(startingPosIndex, endingPosIndex);
-        printBoard();
-        System.out.println(currentGame.currentBoard.fen);
-        System.out.println(currentGame.currentBoard.turn);
-    }
-    if (moveSuccess){
-        moveInputBox.setText("");
-    }
-}
-*/
-
-/*
-public void handleInput(String input){
-    if (currentGame.currentBoard.promotingPawn){
-        if (isValidPromotionInput(input)){
-            currentGame.promotePawn(input);
-            printBoard();
-            moveInputBox.setText("");
-        }
-    } else {
-        attemptMove(input);
-    }
-}
-*/
-
-
-/*
-moveInputBox = new JTextField(8);
-moveInputBox.addActionListener(new ActionListener(){
-    public void actionPerformed(ActionEvent e) {
-        handleInput(moveInputBox.getText());
-    }
-});
-
-//stuffHolder.add(moveInputBox, BorderLayout.SOUTH);
- * 
- */

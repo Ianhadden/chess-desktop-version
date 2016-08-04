@@ -45,7 +45,9 @@ public class Game {
                     currentBoard.undoMove();
                     return false;
                 } else {
-                    fens.add(currentBoard.fen);
+                    if (!currentBoard.promotingPawn){
+                        fens.add(currentBoard.fen);
+                    }
                     if (checkMate()){
                         inProgress = false;
                         System.out.println("We have a winner!");
@@ -159,6 +161,7 @@ public class Game {
         m.addChange(pawnIndex, desired);
         currentBoard.applyMove(m);
         currentBoard.promotingPawn = false;
+        fens.add(currentBoard.fen);
     }
     
     public void saveGame(File dest){

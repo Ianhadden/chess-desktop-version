@@ -1,26 +1,26 @@
 import java.util.ArrayList;
 
 public class Board {
-    Position doubleJumper;
-    String turn;
-    String fen;
-    String oldFen;
-    boolean promotingPawn;
-            
+    String turn; // "white" or "black"
+    String fen; // the fen for this board
+    String oldFen; // the immediately previous fen
+    boolean promotingPawn; // true if a pawn is being promoted
+    
+    /**
+     * Creates a new Board using the given fen
+     * @param startFen
+     */
     public Board(String startFen){
         this.fen = startFen;
         updateBoardFromFen(startFen);
         promotingPawn = false;
     }
     
+    /**
+     * Updates this board given a fen. (Updates whose turn it is)
+     * @param fen The fen to update from
+     */
     public void updateBoardFromFen(String fen){
-        /*
-        for (int i = 0; i < 64; i++){
-            int y = (i / 8) + 1;
-            int x = (i % 8) + 1;
-            grid[y][x] = fen.charAt(i);
-        }
-        */
         if (fen.charAt(65) == 'w'){
             turn = "white";
         } else {
@@ -28,15 +28,31 @@ public class Board {
         }
     }
     
+    /**
+     * Returns a Position representing a board position given a fenIndex
+     * @param fenIndex The fenIndex of the piece
+     * @return the Position
+     */
     public Position position(int fenIndex){
         return new Position((fenIndex / 8) + 1, (fenIndex % 8) + 1);
     }
     
+    /**
+     * Returns the fenIndex of a position on the board
+     * @param pos The position
+     * @return The fenIndex
+     * @pre Must be a valid board position
+     */
     public int fenIndex (Position pos){
         return pos.x - 1 + (pos.y - 1) * 8;
     }
     
-    //Given the index in the fen of a piece, returns the owner
+    /**
+     * Given the index in the fen of a piece, returns the owner
+     * @param fenIndex The index in the fen of the piece
+     * @return The owner of the piece, "white" or "black"
+     * @pre -1 < fenIndex < 64
+     */
     public String owner(int fenIndex){
         if (fen.charAt(fenIndex) == '-'){
             return "empty";
@@ -47,12 +63,21 @@ public class Board {
         }
     }
     
-    //Given the position on the grid of a piece, returns the owner
+    /**
+     * Given the position on the grid of a piece, returns the owner
+     * @param pos The position on the board
+     * @return "white" or "black"
+     */
     public String owner(Position pos){
         return owner(fenIndex(pos));
     }
     
-    //apply move, skip pawn promotion test
+    /**
+     * Applies a move to the board, skipping the pawn promotion test.
+     * This is used when testing hypothetical moves, since we don't want
+     * such moves to accidently trigger the pawn promotion UI.
+     * @param m The move to be applied
+     */
     public void applyMoveSPP(Move m){
         String workingFen = fen;
         //apply updates
@@ -66,6 +91,10 @@ public class Board {
         updateBoardFromFen(fen);
     }
     
+    /**
+     * Applies a move to the board
+     * @param m The move to be applied
+     */
     public void applyMove(Move m){
         //check for pawn being applicable for promotion
         if (m.changes.size() > 1){
@@ -78,12 +107,19 @@ public class Board {
         applyMoveSPP(m);
     }
     
+    /**
+     * Undoes the last move applied to the board
+     */
     public void undoMove(){
         fen = oldFen;
         updateBoardFromFen(fen);
     }
     
-    //Returns an arrayList of all possible moves on the board.
+    /**
+     * Returns a list of all possible moves on the board. This list includes moves
+     * which put the moving player in check.
+     * @return a list of all possible moves on the board
+     */
     public ArrayList<Move> generateMoves(){
         ArrayList<Move> moves = new ArrayList<Move>();
         
@@ -423,6 +459,10 @@ public class Board {
         }
     }
     
+    /**
+     * Returns a BoardUpdate which when attached to a move will switch whose turn it is
+     * @returna a BoardUpdate which when attached to a move will switch whose turn it is
+     */
     public BoardUpdate turnChange(){
         char newTurn;
         if (turn.equals("white")){
@@ -433,15 +473,30 @@ public class Board {
         return new BoardUpdate(65, newTurn);
     }
     
+    /**
+     * Adds BoardUpdates to the given move to indicate that the move is not a pawn double jump
+     * @param m
+     */
     public void noDoubleJumpers(Move m){
         m.addChange(new BoardUpdate(73, '0'));
         m.addChange(new BoardUpdate(72, '0'));
     }
     
+    /**
+     * Returns true if the given y and x are within the bounds of the board
+     * @param y coordinate
+     * @param x coordinate
+     * @return true if the given y and x are within the bounds of the board
+     */
     public boolean inBounds(int y, int x){
         return ( x > 0 && x < 9 && y > 0 && y < 9);
     }
     
+    /**
+     * Returns true if the given Position is within the bounds of the board
+     * @param pos The position
+     * @return true if the given Position is within the bounds of the board
+     */
     public boolean inBounds(Position pos){
         return (pos.x > 0 && pos.x < 9 && pos.y > 0 && pos.y < 9);
     }
