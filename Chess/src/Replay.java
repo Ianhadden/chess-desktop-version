@@ -13,17 +13,23 @@ public class Replay {
         updateToReflectFenNumber();
     }
     
-    public void advance(){
+    public boolean advance(){
         if (currentFenNumber < fens.size() - 1){
             currentFenNumber++;
             updateToReflectFenNumber();
+            return true;
+        } else {
+            return false;
         }
     }
     
-    public void retreat(){
+    public boolean retreat(){
         if (currentFenNumber > 0){
             currentFenNumber--;
             updateToReflectFenNumber();
+            return true;
+        } else {
+            return false;
         }
     }
     

@@ -488,7 +488,7 @@ public class Board {
      * @param x coordinate
      * @return true if the given y and x are within the bounds of the board
      */
-    public boolean inBounds(int y, int x){
+    public static boolean inBounds(int y, int x){
         return ( x > 0 && x < 9 && y > 0 && y < 9);
     }
     
@@ -497,7 +497,7 @@ public class Board {
      * @param pos The position
      * @return true if the given Position is within the bounds of the board
      */
-    public boolean inBounds(Position pos){
+    public static boolean inBounds(Position pos){
         return (pos.x > 0 && pos.x < 9 && pos.y > 0 && pos.y < 9);
     }
 }

@@ -17,7 +17,6 @@ import javax.swing.JLayeredPane;
  */
 public class MouseHandler implements MouseListener, MouseMotionListener{
     boolean dragging;
-    JFrame frame;
     Display disp;
     int startIndex;
     JLabelPiece pieceBeingDragged;
@@ -27,8 +26,12 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     @Override
     public void mouseDragged(MouseEvent e) {
         if (!dragging){ // meaning if this is the beginning of a drag
-            dragging = true;
             Position startPos = getPositionFromPixelCoords(e.getY(), e.getX()); //get position on board
+            if (!Board.inBounds(startPos)){/*Not having this check leads to a cool yet subtle bug. 
+                Allows you to do things like dragging from y=3, x=0 to y=4, x=8 and get a valid move */
+                return;
+            }
+            dragging = true;
             startIndex = startPos.x - 1 + (startPos.y - 1) * 8; //get fenindex from position
             
             //see if one of the player's pieces is being dragged. If so save it's position and bring it to the front
@@ -102,8 +105,10 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     public void mouseReleased(MouseEvent e) {
         if (dragging){ //end of drag
             Position endPos = getPositionFromPixelCoords(e.getY(), e.getX()); // get position from pixel coords
-            int endIndex = endPos.x - 1 + (endPos.y - 1) * 8; // get fenindex from position
-            disp.attemptMove(startIndex, endIndex); //attempt move using the fenindexes
+            if (Board.inBounds(endPos)){
+                int endIndex = endPos.x - 1 + (endPos.y - 1) * 8; // get fenindex from position
+                disp.attemptMove(startIndex, endIndex); //attempt move using the fenindexes
+            }
             dragging = false;
             if (pieceBeingDragged != null){
                 //put the piece back, regardless of whether the move was successful or because if it was
@@ -122,7 +127,12 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     public void mouseEntered(MouseEvent e) {}
 
     @Override
-    public void mouseExited(MouseEvent e) {}
+    public void mouseExited(MouseEvent e) {
+        if (!dragging){
+            disp.frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+            cursor = "pointer";
+        }
+    }
     
     /**
      * Returns the board position of a piece given given coordinates

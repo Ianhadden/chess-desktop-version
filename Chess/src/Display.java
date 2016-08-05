@@ -126,7 +126,6 @@ public class Display implements ActionListener {
         if (mode == GAMEMODE){
             //add a mouse listener if in game mode
             MouseHandler handle = new MouseHandler();
-            handle.frame = frame;
             handle.disp = this;
             stuffHolder.boardLayers.addMouseListener(handle);
             stuffHolder.boardLayers.addMouseMotionListener(handle);
@@ -220,7 +219,9 @@ public class Display implements ActionListener {
         advance.addActionListener(new ActionListener(){
             JLabel tni = turnNumberIndicator;
             public void actionPerformed(ActionEvent e){
-                currentReplay.advance();
+                if (currentReplay.advance() && autorotate){
+                    toggleRotate();
+                }
                 tni.setText("<html>&nbsp;Move " + currentReplay.currentFenNumber 
                         + "<br>&nbsp;&nbsp;&nbsp;of " + (currentReplay.fens.size() - 1) + "<html>");
                 printBoard();
@@ -234,7 +235,9 @@ public class Display implements ActionListener {
         retreat.addActionListener(new ActionListener(){
             JLabel tni = turnNumberIndicator;
             public void actionPerformed(ActionEvent e){
-                currentReplay.retreat();
+                if (currentReplay.retreat() && autorotate){
+                    toggleRotate();
+                }
                 tni.setText("<html>&nbsp;Move " + currentReplay.currentFenNumber 
                         + "<br>&nbsp;&nbsp;&nbsp;of " + (currentReplay.fens.size() - 1) + "<html>");
                 printBoard();
