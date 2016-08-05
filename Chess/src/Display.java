@@ -13,44 +13,67 @@ import javax.swing.*;
 
 public class Display implements ActionListener {
     JFrame frame;
+    StuffBox stuffHolder; // Upper level container for everything but the menu
+    
+    boolean rotated, autorotate; // true if the board is rotated / autorotate is on
+    
     Game currentGame = null;
     Replay currentReplay = null;
-    ArrayList<JLabelPiece> boardPieces = new ArrayList<JLabelPiece>(); // list of pieces
-    ArrayList<Component> pawnPromotionButtons = new ArrayList<Component>();
-    JLayeredPane boardLayers; // Holds the board and the pieces
-    Box stuffHolder; // Upper level container for everything but the menu
-    JLabel turnIndicator; // displays whose turn it is
-    boolean rotated, autorotate; // true if the board is rotated / autorotate is on
-    JLabel boardDisplay; // JLabel that displays the board itself
-    int mode; // to be set to 1 or 0 (modes below)
-    Box sideButtons; // container for the buttons on the side of the board
     
+    int mode; // to be set to 1 or 0 (modes below)
     final int REPLAYMODE = 1;
     final int GAMEMODE = 0;
+    
     /**
-     * Sets up the display
+     * Create a new Display
      */
     public Display(){
         frame = new JFrame("Chess");
         frame.setResizable(false);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setPreferredSize(new Dimension(672, 630)); //672, 876
+        frame.setPreferredSize(new Dimension(672, 630));
         
         JMenuBar menubar = setUpMenu();
         frame.setJMenuBar(menubar);
-        
-        stuffHolder = new Box(BoxLayout.LINE_AXIS);
-        frame.add(stuffHolder, BorderLayout.WEST);
-        
-        boardLayers = new JLayeredPane();
-        boardLayers.setPreferredSize(new Dimension(576, 576));
-        stuffHolder.add(boardLayers);
-        stuffHolder.add(Box.createRigidArea(new Dimension(12,0)));
         
         rotated = false;
         autorotate = false;
         frame.pack();
         frame.setVisible(true);
+    }
+    
+    /**
+     * Outer container class for the display
+     */
+    public class StuffBox extends Box{
+        
+        JLayeredPane boardLayers; // Holds the boardDisplay and the boardPieces
+        ArrayList<JLabelPiece> boardPieces; // list of pieces
+        JLabel boardDisplay; // JLabel that displays the board itself
+        SideBarBox sideButtons; //container for the buttons on the side of the board
+            
+        public StuffBox(int axis) {
+            super(axis);
+        }
+    }
+    
+    /**
+     * Inner container for the side bar buttons/info
+     */
+    public class SideBarBox extends Box{
+        
+        JLabel turnIndicator; // displays whose turn it is or who has won
+        
+        ArrayList<Component> pawnPromotionButtons;
+        /*List containing 6 items. Indices 0 - 3 hold the actual pawn promotion
+         * buttons. Index 4 holds the container for those buttons. Index 5 holds
+         * a large empty component that is displayed when the pawn promotion buttons
+         * are not, so that proper spacing is maintained
+         */
+        
+        public SideBarBox(int axis) {
+            super(axis);
+        }   
     }
     
     /**
@@ -82,34 +105,39 @@ public class Display implements ActionListener {
      * Sets up the board display
      */
     public void setUpGameBoardDisplay(){
-        //set up board
-        boardDisplay = new JLabel();
+        //get rid of the old stuffHolder if we had one
+        if (stuffHolder != null){
+            frame.remove(stuffHolder);
+        }
+        stuffHolder = new StuffBox(BoxLayout.LINE_AXIS);
+        frame.add(stuffHolder, BorderLayout.WEST);
+        
+        JLayeredPane boardLayers = new JLayeredPane();
+        boardLayers.setPreferredSize(new Dimension(576, 576));
+        stuffHolder.add(boardLayers);
+        stuffHolder.add(Box.createRigidArea(new Dimension(12,0)));
+        stuffHolder.boardLayers = boardLayers;
+
+        JLabel boardDisplay = new JLabel();
         boardDisplay.setBounds(0, 0, 576, 576);
         boardDisplay.setIcon(new ImageIcon("chessboard.png"));
-        boardLayers.add(boardDisplay, JLayeredPane.DEFAULT_LAYER);
-        MouseListener[] handlers = boardLayers.getMouseListeners();
-        if (mode == GAMEMODE && handlers.length == 0){
-            //add a mouse listener if in game mode and we don't have one already
+        stuffHolder.boardLayers.add(boardDisplay, JLayeredPane.DEFAULT_LAYER);
+        stuffHolder.boardDisplay = boardDisplay;
+        if (mode == GAMEMODE){
+            //add a mouse listener if in game mode
             MouseHandler handle = new MouseHandler();
             handle.frame = frame;
             handle.disp = this;
-            boardLayers.addMouseListener(handle);
-            boardLayers.addMouseMotionListener(handle);
+            stuffHolder.boardLayers.addMouseListener(handle);
+            stuffHolder.boardLayers.addMouseMotionListener(handle);
         } else if (mode == REPLAYMODE){
-            /* if we previously added a mouse listener to the board, remove it, because we
-             don't need it in replay mode. Also change the cursor back to pointer in case it isn't already */
-            if (handlers.length != 0){
-                frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-                boardLayers.removeMouseListener(handlers[0]);
-                boardLayers.removeMouseMotionListener((MouseMotionListener) handlers[0]);
-            }
+            /* if in replay mode, change the cursor back to pointer in case it isn't already */
+            frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
         }
+        stuffHolder.boardPieces = new ArrayList<JLabelPiece>();
         
         //side up normal side bar buttons
-        if (sideButtons != null){ // get rid of old side buttons if there were any
-            stuffHolder.remove(sideButtons);
-        }
-        sideButtons = new Box(BoxLayout.PAGE_AXIS);      
+        SideBarBox sideButtons = new SideBarBox(BoxLayout.PAGE_AXIS);      
         JButton rotate = new JButton(new ImageIcon("rotate2.png"));
         JButton autorotateButton = new JButton(new ImageIcon("autorotateoff.png"));
         rotate.addActionListener(new ActionListener(){
@@ -133,25 +161,29 @@ public class Display implements ActionListener {
         sideButtons.add(Box.createRigidArea(new Dimension(0,12)));
         sideButtons.add(autorotateButton);
         sideButtons.add(Box.createRigidArea(new Dimension(0,12)));
-        turnIndicator = new JLabel("");
+        JLabel turnIndicator = new JLabel("");
         turnIndicator.setFont(new Font("Serif", Font.BOLD, 18));
         sideButtons.add(turnIndicator);         
+        sideButtons.turnIndicator = turnIndicator;
         
         if (mode == GAMEMODE){
-            sideButtons.add(setUpPawnPromotionInterface());
+            sideButtons.add(setUpPawnPromotionInterface(sideButtons));
             Component largeSpace = Box.createRigidArea(new Dimension(0,352));
             sideButtons.add(largeSpace);
-            pawnPromotionButtons.add(largeSpace);// index 5 for the space displayed when buttons aren't
+            sideButtons.pawnPromotionButtons.add(largeSpace);// index 5 for the space displayed when buttons aren't
         } else { // mode == REPLAYMODE
             sideButtons.add(setUpReplayInterface());
         }
         stuffHolder.add(sideButtons);
+        stuffHolder.sideButtons = sideButtons;
         
         frame.revalidate();
     }
     
-    public Box setUpPawnPromotionInterface(){
+    public Box setUpPawnPromotionInterface(SideBarBox sideButtons){
         Box promotionInterface = new Box(BoxLayout.PAGE_AXIS);
+        ArrayList<Component> pawnPromotionButtons = new ArrayList<Component>();
+        sideButtons.pawnPromotionButtons = pawnPromotionButtons;
         for (int i = 0; i < 4; i++){
             JPieceButton jb = new JPieceButton();
             jb.addActionListener(new ActionListener(){
@@ -219,15 +251,16 @@ public class Display implements ActionListener {
      * Displays the pawn promotion dialogue and buttons
      */
     public void showPawnPromotionButtons(){
-        turnIndicator.setText("<html>&nbsp;Choose<br>&nbsp;&nbsp;piece<html>");
-        pawnPromotionButtons.get(4).setVisible(true); // make promotionInterface visible
-        pawnPromotionButtons.get(5).setVisible(false); // make big space thingy not
+        stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;Choose<br>&nbsp;&nbsp;piece<html>");
+        stuffHolder.sideButtons.pawnPromotionButtons.get(4).setVisible(true); // make promotionInterface visible
+        stuffHolder.sideButtons.pawnPromotionButtons.get(5).setVisible(false); // make big space thingy not
         String[] whitePieces = {"whitequeen.png", "whitebishop.png","whiterook.png","whitehorse.png"};
         String[] blackPieces = {"blackqueen.png", "blackbishop.png","blackrook.png","blackhorse.png"};
         String[] inUse = currentGame.currentBoard.turn.equals("black")? whitePieces : blackPieces;
         for (int i = 0; i < 4; i++){
-            ((JButton) pawnPromotionButtons.get(i)).setIcon(new ImageIcon(inUse[i]));
-            ((JPieceButton) pawnPromotionButtons.get(i)).piece = "" + inUse[i].charAt(5); // dependent of format above
+            ((JButton) stuffHolder.sideButtons.pawnPromotionButtons.get(i)).setIcon(new ImageIcon(inUse[i]));
+            ((JPieceButton) stuffHolder.sideButtons.pawnPromotionButtons.get(i)).piece = "" + inUse[i].charAt(5);
+                                                                // dependent of format above
         }
     }
     
@@ -235,10 +268,10 @@ public class Display implements ActionListener {
      * Removes the pawn promotion dialogue and buttons
      */
     public void removePawnPromotionButtons(){
-        turnIndicator.setText("<html>&nbsp;" + 
+        stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;" + 
                 currentGame.currentBoard.turn + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
-        pawnPromotionButtons.get(4).setVisible(false);
-        pawnPromotionButtons.get(5).setVisible(true);   
+        stuffHolder.sideButtons.pawnPromotionButtons.get(4).setVisible(false);
+        stuffHolder.sideButtons.pawnPromotionButtons.get(5).setVisible(true);   
     }
     
     
@@ -246,7 +279,6 @@ public class Display implements ActionListener {
      * Handles actions associated with the menu
      */
     public void actionPerformed(ActionEvent e) {
-        //System.out.println(e.getActionCommand());
         
         if (e.getActionCommand().equals("Load Replay")){
             JFileChooser fc = new JFileChooser();
@@ -313,22 +345,20 @@ public class Display implements ActionListener {
                 try {
                     goodToGo = dest.createNewFile();
                 } catch (IOException e2) {
-                    // TODO Auto-generated catch block
                     e2.printStackTrace();
                 }
                 if (goodToGo){
                     currentGame.saveGame(dest);
                 } else {
-                    System.out.println("that file already exists");
+                    int reply = JOptionPane.showConfirmDialog(null, 
+                            "There's already a file with that name. Overwrite it?", 
+                            "Overwrite?",  JOptionPane.YES_NO_OPTION);
+                    if (reply == JOptionPane.YES_OPTION){
+                        currentGame.saveGame(dest);
+                    }
                 }
             }
         }
-    }
-    
-    public boolean isValidPromotionInput(String input){
-        char c = Character.toLowerCase(input.charAt(0));
-        return input.length() == 1 && (c == 'r' || c == 'q'
-                || c == 'b' || c == 'h');
     }
     
     /**
@@ -341,9 +371,7 @@ public class Display implements ActionListener {
         boolean moveSuccess = false;
         if (startingPosIndex > -1 && startingPosIndex <  64 &&
             endingPosIndex > -1 && endingPosIndex < 64){
-            moveSuccess = currentGame.attemptMove(startingPosIndex, endingPosIndex); 
-            //System.out.println(currentGame.currentBoard.fen);
-            //System.out.println(currentGame.currentBoard.turn);
+            moveSuccess = currentGame.attemptMove(startingPosIndex, endingPosIndex);
         }
         if (moveSuccess){
             if (currentGame.currentBoard.promotingPawn){
@@ -363,9 +391,9 @@ public class Display implements ActionListener {
     public void toggleRotate(){
         rotated = !rotated;
         if (rotated){
-            boardDisplay.setIcon(new ImageIcon("chessboardrotated.png"));
+            stuffHolder.boardDisplay.setIcon(new ImageIcon("chessboardrotated.png"));
         } else {
-            boardDisplay.setIcon(new ImageIcon("chessboard.png"));
+            stuffHolder.boardDisplay.setIcon(new ImageIcon("chessboard.png"));
         }
         printBoard();
     }
@@ -387,11 +415,11 @@ public class Display implements ActionListener {
     public void printBoard(){
         String uneditedFen = mode == GAMEMODE? currentGame.currentBoard.fen : currentReplay.currentFen;
         //remove pieces already being displayed
-        if (boardPieces.size() != 0){
-            for (int i = 0; i < boardPieces.size(); i++){
-                boardLayers.remove(boardPieces.get(i));
+        if (stuffHolder.boardPieces.size() != 0){
+            for (int i = 0; i < stuffHolder.boardPieces.size(); i++){
+                stuffHolder.boardLayers.remove(stuffHolder.boardPieces.get(i));
             }
-            boardPieces = new ArrayList<JLabelPiece>();
+            stuffHolder.boardPieces = new ArrayList<JLabelPiece>();
         }
         //go through the fen, make JLabels for pieces, add them to boardLayers
         for (int i = 0; i < 64; i++){
@@ -411,19 +439,19 @@ public class Display implements ActionListener {
                 String pieceName = getPieceName(uneditedFen.charAt(i));
                 piece.owner = pieceName.substring(0, 5); // gets "white" or "black"
                 piece.setIcon(new ImageIcon(pieceName));
-                boardLayers.add(piece, JLayeredPane.PALETTE_LAYER);
-                boardPieces.add(piece);
+                stuffHolder.boardLayers.add(piece, JLayeredPane.PALETTE_LAYER);
+                stuffHolder.boardPieces.add(piece);
                 
             }
         }
         if (inProgress() && (mode == REPLAYMODE || !currentGame.currentBoard.promotingPawn)){ 
             // update dialogue for whose turn it is
             String turn = getTurn();
-            turnIndicator.setText("<html>&nbsp;" + turn + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
+            stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;" + turn + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
             //html allows for multiline jlabel
         } else if (!inProgress()){
             String winner = getTurn().equals("White")?"Black":"White";
-            turnIndicator.setText("<html>&nbsp;" + winner + "<br>&nbsp;&nbsp;wins!<html>");
+            stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;" + winner + "<br>&nbsp;&nbsp;wins!<html>");
         }
         frame.repaint();
     }
@@ -475,7 +503,7 @@ public class Display implements ActionListener {
             return currentReplay.inProgress;
         }
     }
-    
+       
     public static void main(String[] args){
         Display disp = new Display();
     }

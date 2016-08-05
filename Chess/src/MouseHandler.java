@@ -33,7 +33,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
             
             //see if one of the player's pieces is being dragged. If so save it's position and bring it to the front
             //so we can drag it.
-            for (JLabelPiece p : disp.boardPieces){
+            for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (startPos.x == p.position.x && startPos.y == p.position.y &&
                         p.owner.equals(disp.currentGame.currentBoard.turn) 
                         && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
@@ -43,7 +43,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
                             new Point(16,12),"drag cursor"));
                     cursor = "drag";
                     pieceBeingDragged = p;
-                    disp.boardLayers.setLayer(p, JLayeredPane.DRAG_LAYER);
+                    disp.stuffHolder.boardLayers.setLayer(p, JLayeredPane.DRAG_LAYER);
                     savedX = p.getX();
                     savedY = p.getY();
                     break;
@@ -63,7 +63,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
         Position pos = getPositionFromPixelCoords(e.getY(), e.getX());
         boolean changed = false;
         if (!dragging && !cursor.equals("hand")){
-            for (JLabelPiece p : disp.boardPieces){
+            for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (pos.x == p.position.x && pos.y == p.position.y &&
                         p.owner.equals(disp.currentGame.currentBoard.turn) 
                         && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
@@ -76,7 +76,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
         }
         if (!changed && !dragging && !cursor.equals("pointer")){
             boolean shouldStillBeHand = false;
-            for (JLabelPiece p : disp.boardPieces){
+            for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (pos.x == p.position.x && pos.y == p.position.y &&
                         p.owner.equals(disp.currentGame.currentBoard.turn) 
                         && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
@@ -109,7 +109,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
                 //put the piece back, regardless of whether the move was successful or because if it was
                 //successful then the pieceBeingDragged isn't being displayed anymore anyway
                 pieceBeingDragged.setLocation(savedX, savedY);
-                disp.boardLayers.setLayer(pieceBeingDragged, JLayeredPane.PALETTE_LAYER);
+                disp.stuffHolder.boardLayers.setLayer(pieceBeingDragged, JLayeredPane.PALETTE_LAYER);
                 pieceBeingDragged = null;
             }
             mouseMoved(e); // to update the cursor back to pointer or hand
