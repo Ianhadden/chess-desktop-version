@@ -10,7 +10,11 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 
-
+/**
+ * Mouse Listener for the board. Deals with detecting drags from one spot to another
+ * @author Ian
+ *
+ */
 public class MouseHandler implements MouseListener, MouseMotionListener{
     boolean dragging;
     JFrame frame;
@@ -18,6 +22,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     int startIndex;
     JLabelPiece pieceBeingDragged;
     int savedX, savedY;
+    String cursor = "pointer";
     
     @Override
     public void mouseDragged(MouseEvent e) {
@@ -25,17 +30,18 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
             dragging = true;
             Position startPos = getPositionFromPixelCoords(e.getY(), e.getX()); //get position on board
             startIndex = startPos.x - 1 + (startPos.y - 1) * 8; //get fenindex from position
-            /*
-            frame.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
-                    new ImageIcon("C:\\Users\\Ian\\Documents\\GitHub\\chess\\chess\\pics\\blackpawn.png").getImage(),
-                    new Point(16,16),"custom cursor"));;
-             */ 
+            
             //see if one of the player's pieces is being dragged. If so save it's position and bring it to the front
             //so we can drag it.
             for (JLabelPiece p : disp.boardPieces){
                 if (startPos.x == p.position.x && startPos.y == p.position.y &&
                         p.owner.equals(disp.currentGame.currentBoard.turn) 
-                        && !disp.currentGame.currentBoard.promotingPawn){
+                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
+                    
+                    disp.frame.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
+                            new ImageIcon("drag.png").getImage(),
+                            new Point(16,12),"drag cursor"));
+                    cursor = "drag";
                     pieceBeingDragged = p;
                     disp.boardLayers.setLayer(p, JLayeredPane.DRAG_LAYER);
                     savedX = p.getX();
@@ -54,27 +60,47 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        // TODO Auto-generated method stub
-        
+        Position pos = getPositionFromPixelCoords(e.getY(), e.getX());
+        boolean changed = false;
+        if (!dragging && !cursor.equals("hand")){
+            for (JLabelPiece p : disp.boardPieces){
+                if (pos.x == p.position.x && pos.y == p.position.y &&
+                        p.owner.equals(disp.currentGame.currentBoard.turn) 
+                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
+                    disp.frame.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                    cursor = "hand";
+                    changed = true;
+                }
+            }
+            
+        }
+        if (!changed && !dragging && !cursor.equals("pointer")){
+            boolean shouldStillBeHand = false;
+            for (JLabelPiece p : disp.boardPieces){
+                if (pos.x == p.position.x && pos.y == p.position.y &&
+                        p.owner.equals(disp.currentGame.currentBoard.turn) 
+                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
+                    
+                    shouldStillBeHand = true;
+                    break;
+                }
+            }
+            if (!shouldStillBeHand){
+                disp.frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                cursor = "pointer";
+            }
+        } 
     }
 
     @Override
-    public void mouseClicked(MouseEvent e) {
-        // TODO Auto-generated method stub
-        System.out.println("you clicked");
-        
-    }
+    public void mouseClicked(MouseEvent e) {}
 
     @Override
-    public void mousePressed(MouseEvent e) {
-        // TODO Auto-generated method stub
-        
-    }
+    public void mousePressed(MouseEvent e) {}
 
     @Override
     public void mouseReleased(MouseEvent e) {
         if (dragging){ //end of drag
-            //frame.setCursor(Cursor.getDefaultCursor());
             Position endPos = getPositionFromPixelCoords(e.getY(), e.getX()); // get position from pixel coords
             int endIndex = endPos.x - 1 + (endPos.y - 1) * 8; // get fenindex from position
             disp.attemptMove(startIndex, endIndex); //attempt move using the fenindexes
@@ -86,22 +112,17 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
                 disp.boardLayers.setLayer(pieceBeingDragged, JLayeredPane.PALETTE_LAYER);
                 pieceBeingDragged = null;
             }
+            mouseMoved(e); // to update the cursor back to pointer or hand
         }
         
         
     }
 
     @Override
-    public void mouseEntered(MouseEvent e) {
-        // TODO Auto-generated method stub
-        
-    }
+    public void mouseEntered(MouseEvent e) {}
 
     @Override
-    public void mouseExited(MouseEvent e) {
-        // TODO Auto-generated method stub
-        
-    }
+    public void mouseExited(MouseEvent e) {}
     
     /**
      * Returns the board position of a piece given given coordinates

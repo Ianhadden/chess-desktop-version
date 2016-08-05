@@ -17,13 +17,11 @@ public class Game {
         currentBoard = new Board(startFen);
         fens = new ArrayList<String>();
         fens.add(startFen);
-        //currentBoard.printBoard();
     }
     
     public Game(ArrayList<String> fens){
         currentBoard = new Board(fens.get(fens.size() - 1));
         this.fens = fens;
-        //currentBoard.printBoard();
     }
     
     /**
@@ -186,6 +184,7 @@ public class Game {
             while (scanny.hasNextLine()){
                 fens.add(scanny.nextLine());
             }
+            scanny.close();
         } catch (FileNotFoundException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
