@@ -87,16 +87,17 @@ public class Display implements ActionListener {
         boardDisplay.setBounds(0, 0, 576, 576);
         boardDisplay.setIcon(new ImageIcon("chessboard.png"));
         boardLayers.add(boardDisplay, JLayeredPane.DEFAULT_LAYER);
-        if (mode == GAMEMODE){ // add mouse listener if in game mode
+        MouseListener[] handlers = boardLayers.getMouseListeners();
+        if (mode == GAMEMODE && handlers.length == 0){
+            //add a mouse listener if in game mode and we don't have one already
             MouseHandler handle = new MouseHandler();
             handle.frame = frame;
             handle.disp = this;
             boardLayers.addMouseListener(handle);
             boardLayers.addMouseMotionListener(handle);
-        } else { // mode == REPLAYMODE
+        } else if (mode == REPLAYMODE){
             /* if we previously added a mouse listener to the board, remove it, because we
              don't need it in replay mode. Also change the cursor back to pointer in case it isn't already */
-            MouseListener[] handlers = boardLayers.getMouseListeners();
             if (handlers.length != 0){
                 frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                 boardLayers.removeMouseListener(handlers[0]);
@@ -141,13 +142,12 @@ public class Display implements ActionListener {
             Component largeSpace = Box.createRigidArea(new Dimension(0,352));
             sideButtons.add(largeSpace);
             pawnPromotionButtons.add(largeSpace);// index 5 for the space displayed when buttons aren't
-        } else {
+        } else { // mode == REPLAYMODE
             sideButtons.add(setUpReplayInterface());
         }
         stuffHolder.add(sideButtons);
         
         frame.revalidate();
-        frame.repaint();
     }
     
     public Box setUpPawnPromotionInterface(){
