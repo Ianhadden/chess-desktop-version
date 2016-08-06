@@ -27,8 +27,8 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     public void mouseDragged(MouseEvent e) {
         if (!dragging){ // meaning if this is the beginning of a drag
             Position startPos = getPositionFromPixelCoords(e.getY(), e.getX()); //get position on board
-            if (!Board.inBounds(startPos)){/*Not having this check leads to a cool yet subtle bug. 
-                Allows you to do things like dragging from y=3, x=0 to y=4, x=8 and get a valid move */
+            if (!Board.inBounds(startPos) || disp.currentGame.currentBoard.promotingPawn ||
+                                            !disp.currentGame.inProgress){
                 return;
             }
             dragging = true;
@@ -38,8 +38,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
             //so we can drag it.
             for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (startPos.x == p.position.x && startPos.y == p.position.y &&
-                        p.owner.equals(disp.currentGame.currentBoard.turn) 
-                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
+                        p.owner.equals(disp.currentGame.currentBoard.turn) ){
                     
                     disp.frame.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
                             new ImageIcon("drag.png").getImage(),

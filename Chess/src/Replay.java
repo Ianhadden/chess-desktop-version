@@ -35,7 +35,7 @@ public class Replay {
     
     public void updateToReflectFenNumber(){
         currentFen = fens.get(currentFenNumber);
-        if (currentFenNumber == fens.size() - 1){
+        if (!(currentFen.charAt(64) == ' ')){
             inProgress = false;
         } else {
             inProgress = true;

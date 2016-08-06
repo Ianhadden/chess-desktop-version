@@ -43,15 +43,19 @@ public class Game {
                     currentBoard.undoMove();
                     return false;
                 } else {
-                    if (!currentBoard.promotingPawn){
-                        fens.add(currentBoard.fen);
-                    }
                     if (checkMate()){
                         inProgress = false;
-                        System.out.println("We have a winner!");
+                        Move winnerUpdate = new Move();
+                        char winner = currentBoard.turn.equals("white")?'b':'w';
+                        winnerUpdate.addChange(64, winner);
+                        currentBoard.forceFenUpdate(winnerUpdate);
+                        System.out.println("We have a winner!" + winner);
                     } else if (staleMate()){
                         inProgress = false;
                         System.out.println("It's a stalemate!");
+                    }
+                    if (!currentBoard.promotingPawn){
+                        fens.add(currentBoard.fen);
                     }
                     return true;
                 }
@@ -157,7 +161,7 @@ public class Game {
         }
         Move m = new Move();
         m.addChange(pawnIndex, desired);
-        currentBoard.applyMove(m);
+        currentBoard.forceFenUpdate(m);
         currentBoard.promotingPawn = false;
         fens.add(currentBoard.fen);
     }

@@ -146,6 +146,18 @@ public class Board {
     }
     
     /**
+     * Forces changes to the current fen. Cannot be undone.
+     * @param m The move containing the changes
+     */
+    public void forceFenUpdate(Move m){
+        for (BoardUpdate b : m.changes){
+            String preceding = fen.substring(0, b.fenIndex);
+            String following = fen.substring(b.fenIndex + 1, 74);
+            fen = preceding + b.newValue + following;
+        }
+    }
+    
+    /**
      * Adds king moves to the moves list given the fenIndex of the
      * king being moved and the moves list
      * @param moves The moves list
