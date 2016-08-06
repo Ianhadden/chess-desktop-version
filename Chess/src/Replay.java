@@ -41,4 +41,12 @@ public class Replay {
             inProgress = true;
         }
     }
+    
+    public Game startGameFromCurrentState(){
+        ArrayList<String> fensUpToThisPoint = new ArrayList<String>();
+        for (int i = 0; i <= currentFenNumber; i++){
+            fensUpToThisPoint.add(fens.get(i));
+        }
+        return new Game(fensUpToThisPoint);
+    }
 }

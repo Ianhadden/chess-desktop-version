@@ -17,11 +17,13 @@ public class Game {
         currentBoard = new Board(startFen);
         fens = new ArrayList<String>();
         fens.add(startFen);
+        inProgress = true;
     }
     
     public Game(ArrayList<String> fens){
         currentBoard = new Board(fens.get(fens.size() - 1));
         this.fens = fens;
+        inProgress = !checkMate();
     }
     
     /**
@@ -64,6 +66,11 @@ public class Game {
         return false;
     }
     
+    /**
+     * Returns true if the given player is in check on the current board
+     * @param player The player to test on
+     * @return true if in check (or checkmate)
+     */
     public boolean playerInCheck(String player){
         String trueTurn = currentBoard.turn;
         char king;
@@ -94,9 +101,9 @@ public class Game {
     
     /**
      * Returns true if every move the current player can make would result
-     * in check.
+     * in their being in check.
      * @return true if every move the current player can make would result
-     * in check
+     * in their being in check.
      */
     public boolean everyMoveIsCheck(){
         String currentPlayer = currentBoard.turn;

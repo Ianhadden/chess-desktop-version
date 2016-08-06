@@ -96,8 +96,11 @@ public class Display implements ActionListener {
         JMenu replays = new JMenu("Replays");
         menubar.add(replays);
         JMenuItem loadReplay = new JMenuItem("Load Replay");
+        JMenuItem startGameFromHere = new JMenuItem("Start Game From Current Replay State");
         replays.add(loadReplay);
+        replays.add(startGameFromHere);
         loadReplay.addActionListener(this);
+        startGameFromHere.addActionListener(this);
         return menubar;
     }
     
@@ -294,6 +297,17 @@ public class Display implements ActionListener {
                 setUpGameBoardDisplay();
                 printBoard();
             }
+        } else if (e.getActionCommand().equals("Start Game From Current Replay State")){
+            if (mode != REPLAYMODE){
+                JOptionPane.showMessageDialog(null,
+                        "No replay is in progress");
+                return;
+            }
+            currentGame = currentReplay.startGameFromCurrentState();
+            currentReplay = null;
+            mode = GAMEMODE;
+            setUpGameBoardDisplay();
+            printBoard();
             
         } else if (e.getActionCommand().equals("Load Game")){
             JFileChooser fc = new JFileChooser();
