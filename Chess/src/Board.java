@@ -4,6 +4,7 @@ public class Board {
     String turn; // "white" or "black"
     String fen; // the fen for this board
     String oldFen; // the immediately previous fen
+    String oldOldFen; // fen before that one
     boolean promotingPawn; // true if a pawn is being promoted
     
     /**
@@ -86,6 +87,7 @@ public class Board {
             String following = workingFen.substring(b.fenIndex + 1, 74);
             workingFen = preceding + b.newValue + following;
         }
+        oldOldFen = oldFen;
         oldFen = fen;
         fen = workingFen;
         updateBoardFromFen(fen);
@@ -112,6 +114,7 @@ public class Board {
      */
     public void undoMove(){
         fen = oldFen;
+        oldFen = oldOldFen;
         updateBoardFromFen(fen);
     }
     
@@ -183,33 +186,54 @@ public class Board {
             kingHasMoved = 70;
             rightRookHasMoved = 71;
         }
+        //castling left
         if (fen.charAt(kingHasMoved) == 'f' && fen.charAt(leftRookHasMoved) == 'f'){
             Position leftRookPos = new Position(pos.y, pos.x - 4);
             Position spaceBetween1 = new Position(pos.y, pos.x - 3);
             Position spaceBetween2 = new Position(pos.y, pos.x - 2);
             Position spaceBetween3 = new Position(pos.y, pos.x - 1);
             if (owner(leftRookPos).equals(turn) && fen.charAt(fenIndex(spaceBetween1)) == '-' &&
-                fen.charAt(fenIndex(spaceBetween2)) == '-' && fen.charAt(fenIndex(spaceBetween3)) == '-' ){
-                Move m = createStandardMove(i, position(i - 2));
-                m.addChange(fenIndex(leftRookPos), '-');
-                m.addChange(fenIndex(new Position(pos.y, pos.x - 1)), fen.charAt(fenIndex(leftRookPos)));
-                m.addChange(kingHasMoved, 't');
-                m.addChange(leftRookHasMoved, 't');
-                moves.add(m);
+                fen.charAt(fenIndex(spaceBetween2)) == '-' && fen.charAt(fenIndex(spaceBetween3)) == '-' &&
+                !Game.playerInCheck(this, turn)){
+                //checking that the spot in between isn't check
+                Move nudgeLeft = createStandardMove(i, spaceBetween3);
+                nudgeLeft.addChange(kingHasMoved, 't');
+                String mover = turn;
+                applyMove(nudgeLeft);
+                boolean inCheck = Game.playerInCheck(this, mover);
+                undoMove();
+                if (!inCheck){ //finally adding the move
+                    Move m = createStandardMove(i, position(i - 2));
+                    m.addChange(fenIndex(leftRookPos), '-');
+                    m.addChange(fenIndex(new Position(pos.y, pos.x - 1)), fen.charAt(fenIndex(leftRookPos)));
+                    m.addChange(kingHasMoved, 't');
+                    m.addChange(leftRookHasMoved, 't');
+                    moves.add(m);
+                }
             }
         }
+        //castling right
         if (fen.charAt(kingHasMoved) == 'f' && fen.charAt(rightRookHasMoved) == 'f'){
             Position rightRookPos = new Position(pos.y, pos.x + 3);
             Position spaceBetween1 = new Position(pos.y, pos.x + 2);
             Position spaceBetween2 = new Position(pos.y, pos.x + 1);
             if (owner(rightRookPos).equals(turn) && fen.charAt(fenIndex(spaceBetween1)) == '-' &&
-                fen.charAt(fenIndex(spaceBetween2)) == '-'){
-                Move m = createStandardMove(i, position(i + 2));
-                m.addChange(fenIndex(rightRookPos), '-');
-                m.addChange(fenIndex(new Position(pos.y, pos.x + 1)), fen.charAt(fenIndex(rightRookPos)));
-                m.addChange(kingHasMoved, 't');
-                m.addChange(rightRookHasMoved, 't');
-                moves.add(m);
+                fen.charAt(fenIndex(spaceBetween2)) == '-' && !Game.playerInCheck(this, turn)){
+                //checking that the spot in between isn't check
+                Move nudgeRight = createStandardMove(i, spaceBetween2);
+                nudgeRight.addChange(kingHasMoved, 't');
+                String mover = turn;
+                applyMove(nudgeRight);
+                boolean inCheck = Game.playerInCheck(this, mover);
+                undoMove();
+                if (!inCheck){ //finally adding the move
+                    Move m = createStandardMove(i, position(i + 2));
+                    m.addChange(fenIndex(rightRookPos), '-');
+                    m.addChange(fenIndex(new Position(pos.y, pos.x + 1)), fen.charAt(fenIndex(rightRookPos)));
+                    m.addChange(kingHasMoved, 't');
+                    m.addChange(rightRookHasMoved, 't');
+                    moves.add(m);
+                }
             }
         }
     }

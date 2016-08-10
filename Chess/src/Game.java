@@ -67,36 +67,46 @@ public class Game {
     }
     
     /**
-     * Returns true if the given player is in check on the current board
+     * Returns true if the given player is in check on given current board
+     * @param b The board to check
      * @param player The player to test on
      * @return true if in check (or checkmate)
      */
-    public boolean playerInCheck(String player){
-        String trueTurn = currentBoard.turn;
+    public static boolean playerInCheck(Board b, String player){
+        String trueTurn = b.turn;
         char king;
         if (player == "white"){
-            currentBoard.turn = "black";
+            b.turn = "black";
             king = 'k';
         } else {
-            currentBoard.turn = "white";
+            b.turn = "white";
             king = 'K';
         }
         int kingIndex = -1; //initialized so compiler will shut up
         for (int i = 0; i < 64; i++){
-            if (currentBoard.fen.charAt(i) == king){
+            if (b.fen.charAt(i) == king){
                 kingIndex = i;
                 break;
             }
         }
-        ArrayList<Move> movesList = currentBoard.generateMoves();
+        ArrayList<Move> movesList = b.generateMoves();
         for (Move m : movesList){
             if (m.changes.get(1).fenIndex == kingIndex){
-                currentBoard.turn = trueTurn;
+                b.turn = trueTurn;
                 return true;
             }
         }
-        currentBoard.turn = trueTurn;
+        b.turn = trueTurn;
         return false;
+    }
+    
+    /**
+     * Retunrs true if the given player is in check on this game's current board.
+     * @param player The player to check on
+     * @return true if in check
+     */
+    public boolean playerInCheck(String player){
+        return playerInCheck(currentBoard, player);
     }
     
     /**

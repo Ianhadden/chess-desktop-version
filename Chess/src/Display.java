@@ -14,15 +14,17 @@ import javax.swing.*;
 public class Display implements ActionListener {
     JFrame frame;
     StuffBox stuffHolder; // Upper level container for everything but the menu
+    ChessJMenuBar menubar;
     
     boolean rotated, autorotate; // true if the board is rotated / autorotate is on
     
     Game currentGame = null;
     Replay currentReplay = null;
     
-    int mode; // to be set to 1 or 0 (modes below)
+    private int mode; // should be set through setMode(int) method
     final int REPLAYMODE = 1;
     final int GAMEMODE = 0;
+    final int EMPTYMODE = -1;
     
     /**
      * Create a new Display
@@ -38,6 +40,7 @@ public class Display implements ActionListener {
         
         rotated = false;
         autorotate = false;
+        setMode(EMPTYMODE);
         frame.pack();
         frame.setVisible(true);
     }
@@ -77,15 +80,25 @@ public class Display implements ActionListener {
     }
     
     /**
+     * JMenuBar class to keep track of references to JMenuItems that
+     * need to be changed under certain circumstances
+     */
+    public class ChessJMenuBar extends JMenuBar {
+        JMenuItem saveGame;
+        JMenuItem startGameFromHere;
+    }
+    
+    /**
      * Sets up the menu for the display
      */
     public JMenuBar setUpMenu(){
-        JMenuBar menubar = new JMenuBar();
+        menubar = new ChessJMenuBar();
         JMenu game = new JMenu("Game");
         menubar.add(game);
         JMenuItem newGame = new JMenuItem("New Game");
         JMenuItem loadGame = new JMenuItem("Load Game");
         JMenuItem saveGame = new JMenuItem("Save Game");
+        menubar.saveGame = saveGame;
         newGame.addActionListener(this);
         loadGame.addActionListener(this);
         saveGame.addActionListener(this);
@@ -97,6 +110,7 @@ public class Display implements ActionListener {
         menubar.add(replays);
         JMenuItem loadReplay = new JMenuItem("Load Replay");
         JMenuItem startGameFromHere = new JMenuItem("Start Game From Current Replay State");
+        menubar.startGameFromHere = startGameFromHere;
         replays.add(loadReplay);
         replays.add(startGameFromHere);
         loadReplay.addActionListener(this);
@@ -293,7 +307,7 @@ public class Display implements ActionListener {
                 File file = fc.getSelectedFile();
                 currentReplay = new Replay(Game.getFenListFromFile(file));
                 currentGame = null;
-                mode = REPLAYMODE;
+                setMode(REPLAYMODE);
                 setUpGameBoardDisplay();
                 printBoard();
             }
@@ -305,7 +319,7 @@ public class Display implements ActionListener {
             }
             currentGame = currentReplay.startGameFromCurrentState();
             currentReplay = null;
-            mode = GAMEMODE;
+            setMode(GAMEMODE);
             setUpGameBoardDisplay();
             printBoard();
             
@@ -322,7 +336,7 @@ public class Display implements ActionListener {
                         return;
                     }
                 }
-                mode = GAMEMODE;
+                setMode(GAMEMODE);
                 setUpGameBoardDisplay();
                 currentGame = new Game(Game.getFenListFromFile(file));
                 currentReplay = null;
@@ -338,7 +352,7 @@ public class Display implements ActionListener {
                     return;
                 }
             }
-            mode = GAMEMODE;
+            setMode(GAMEMODE);
             setUpGameBoardDisplay();
             currentGame = new Game();
             currentReplay = null;
@@ -399,6 +413,24 @@ public class Display implements ActionListener {
             } else {
                 printBoard();
             }
+        }
+    }
+    
+    /**
+     * Updates the mode
+     * @param mode
+     */
+    public void setMode(int mode){
+        this.mode = mode;
+        if (mode == GAMEMODE){
+            menubar.startGameFromHere.setEnabled(false);
+            menubar.saveGame.setEnabled(true);
+        } else if (mode == REPLAYMODE){
+            menubar.startGameFromHere.setEnabled(true);
+            menubar.saveGame.setEnabled(false);
+        } else {
+            menubar.startGameFromHere.setEnabled(false);
+            menubar.saveGame.setEnabled(false);
         }
     }
     
