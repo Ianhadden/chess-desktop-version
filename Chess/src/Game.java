@@ -9,6 +9,7 @@ import java.util.Scanner;
 
 public class Game {
     public boolean inProgress = true;
+    public boolean isDraw = false;
     public ArrayList<String> fens;
     public String startFen = "rhbqkbhrpppppppp--------------------------------PPPPPPPPRHBQKBHR wffffff00";
     Board currentBoard;
@@ -52,9 +53,14 @@ public class Game {
                         winnerUpdate.addChange(64, winner);
                         currentBoard.forceFenUpdate(winnerUpdate);
                         System.out.println("We have a winner!" + winner);
-                    } else if (staleMate()){
+                    } else if (draw()){
                         inProgress = false;
-                        System.out.println("It's a stalemate!");
+                        isDraw = true;
+                        Move winnerUpdate = new Move();
+                        char winner = 'd';
+                        winnerUpdate.addChange(64, winner);
+                        currentBoard.forceFenUpdate(winnerUpdate);
+                        System.out.println("It's a draw!");
                     }
                     if (!currentBoard.promotingPawn){
                         fens.add(currentBoard.fen);
@@ -144,6 +150,60 @@ public class Game {
      */
     public boolean staleMate(){
         return (!playerInCheck(currentBoard.turn) && everyMoveIsCheck());
+    }
+    
+    /**
+     * Returns true if the board setup is a draw
+     * @return true if the board setup is a draw
+     */
+    public boolean draw(){
+        if (staleMate()){
+            return true;
+        }
+        int horseCount = 0;
+        //bishop counts
+        int wow = 0; // white on white
+        int wob = 0; // white on black
+        int bow = 0; // black on white
+        int bob = 0; // black on black
+        for (int i = 0; i < 63; i++){
+            char c = currentBoard.fen.charAt(i);
+            if (c == 'p' || c == 'P' || c == 'r' || c == 'R' || c == 'Q' || c == 'q'){
+                return false;
+            } else if (c == 'h' || c == 'H'){
+                horseCount++;
+            } else if (c == 'b'){
+                Position pos = currentBoard.position(i);
+                if ((pos.x + pos.y) % 2 == 0){// 0 == black, 1 == white
+                    wob++;
+                } else {
+                    wow++;
+                }
+            } else if (c == 'B'){
+                Position pos = currentBoard.position(i);
+                if ((pos.x + pos.y) % 2 == 0){// 0 == black, 1 == white
+                    bob++;
+                } else {
+                    bow++;
+                }
+            }
+            if (horseCount > 1){
+                return false;
+            }
+        }
+        int totalBishops = wow + wob + bow + bob;
+        if ((totalBishops == 0 && horseCount == 0) || (totalBishops == 1 && horseCount == 0) ||
+                (totalBishops == 0 && horseCount == 1)){
+            return true;
+        } else if (horseCount == 0){
+            if (wow > 0 && bow > 0 && wob == 0 && bob == 0){
+                return true;
+            }
+            if (wob > 0 && bob > 0 && wow == 0 && bow == 0){
+                return true;
+            }
+        }
+        return false;
     }
     
     /**

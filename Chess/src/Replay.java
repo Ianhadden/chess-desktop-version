@@ -6,6 +6,7 @@ public class Replay {
     String currentFen;
     int currentFenNumber;
     boolean inProgress;
+    boolean isDraw = false;
     
     public Replay(ArrayList<String> fens){
         this.fens = fens;
@@ -39,6 +40,11 @@ public class Replay {
             inProgress = false;
         } else {
             inProgress = true;
+        }
+        if (currentFen.charAt(64) == 'd'){
+            isDraw = true;
+        } else {
+            isDraw = false;
         }
     }
     

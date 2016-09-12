@@ -498,9 +498,11 @@ public class Display implements ActionListener {
             String turn = getTurn();
             stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;" + turn + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
             //html allows for multiline jlabel
-        } else if (!inProgress()){
+        } else if (!inProgress() && !isDraw()){
             String winner = getTurn().equals("White")?"Black":"White";
             stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;" + winner + "<br>&nbsp;&nbsp;wins!<html>");
+        } else if (!inProgress()){
+            stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;&nbsp;It's a<br>&nbsp;&nbsp;draw!<html>");
         }
         frame.repaint();
     }
@@ -550,6 +552,14 @@ public class Display implements ActionListener {
             return currentGame.inProgress;
         } else { // mode == REPLAYMODE
             return currentReplay.inProgress;
+        }
+    }
+    
+    public boolean isDraw(){
+        if (mode == GAMEMODE){
+            return currentGame.isDraw;
+        } else {
+            return currentReplay.isDraw;
         }
     }
        

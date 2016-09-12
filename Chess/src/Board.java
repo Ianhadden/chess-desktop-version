@@ -370,6 +370,9 @@ public class Board {
                 Move m = createStandardMove(i, dest);
                 addRookHasMovedIfApplicable(m, i);
                 moves.add(m);
+                if (owner(fenIndex(dest)).equals(enemy)){
+                    break;
+                }
             } else {
                 break;
             }
