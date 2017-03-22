@@ -16,9 +16,11 @@ import java.util.Scanner;
 
 
 public class Game {
-    ServerSocket serverSocket;
-    Socket clientSocket;
-    public boolean localGame = true;
+    //ServerSocket serverSocket;
+    //Socket clientSocket;
+    BufferedReader receiver;
+    PrintWriter sender;
+    public String team; //used for network games. "white" or "black", or null if local game
     public boolean inProgress = true;
     public boolean isDraw = false;
     public ArrayList<String> fens;
@@ -50,10 +52,13 @@ public class Game {
      * Creates a new game using the default fen and waits for
      * a connection to be made
      * @param port The port number to host the game on
+     * @param team The team, "white" or "black", that this player
+     *             is playing as
      */
-    public Game(int port){
+    public Game(int port, String team){
         this();
-        setUpServer(port);
+        setUpServer(port, team);
+        this.team = team;
     }
     
     /**
@@ -61,26 +66,39 @@ public class Game {
      * @param port The port number to host the game on
      * @param fens A history of the game, with the most recent
      *             game state fen at the end of the list
+     * @param team The team, "white" or "black", that this player
+     *             is playing as
      */
-    public Game(int port, ArrayList<String> fens){
+    public Game(int port, ArrayList<String> fens, String team){
         this(fens);
-        setUpServer(port);
+        setUpServer(port, team);
+        this.team = team;
     }
     
     /**
      * Using the given port, waits for a connection. Once established,
      * sends the most recent fen over the network
      * @param port The port to wait for a connection on
+     * @param team The team, "white" or "black", that this player is
+     *             playing as
      */
-    public void setUpServer(int port){
+    public void setUpServer(int port, String team){
         try {
-            serverSocket = new ServerSocket(port);
-            clientSocket = serverSocket.accept();
+            ServerSocket serverSocket = new ServerSocket(port);
+            Socket clientSocket = serverSocket.accept();
             OutputStream output = clientSocket.getOutputStream();
-            PrintWriter textSend = new PrintWriter(output);
-            textSend.println(fens.get(fens.size() - 1));
-            textSend.flush();
-            textSend.close();
+            sender = new PrintWriter(output);
+            //sends all the fens followed by the team the other
+            //player should play as
+            for (String fen : fens){
+                sender.println(fen);
+                sender.flush();
+            }
+            String otherTeam = team.equals("white")? "black" : "white";
+            sender.println(otherTeam);
+            sender.flush();
+            //sender.close();
+            receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         } catch (IOException e) {
             System.out.println("There was a problem");
         }
@@ -92,18 +110,34 @@ public class Game {
      * @param hostName The host name of the server to connect to
      * @param port The port of the server to connect to
      */
-    public Game(String hostName, int port){
-        try {
-            clientSocket = new Socket(hostName, port);
-            BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            String initialFenFromNetwork = br.readLine();
-            fens = new ArrayList<String>();
-            inProgress = true;
-            fens.add(initialFenFromNetwork);
-            currentBoard = new Board(fens.get(fens.size() - 1));
-            
-        } catch (Exception e){
-            System.out.println("could not connect");
+    public Game(String hostName, int port) throws Exception {
+        Socket clientSocket = new Socket(hostName, port);
+        receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        fens = new ArrayList<String>();
+        String mostRecentLine = receiver.readLine();
+        while (!mostRecentLine.equals("white") && !mostRecentLine.equals("black")){
+            fens.add(mostRecentLine);
+            mostRecentLine = receiver.readLine();
+        }
+        OutputStream output = clientSocket.getOutputStream();
+        sender = new PrintWriter(output);
+        team = mostRecentLine;
+        inProgress = true;
+        currentBoard = new Board(fens.get(fens.size() - 1));
+    }
+    
+    /**
+     * Sends a move to the other player, if it's a network game
+     * @param startIndex The start index of the move
+     * @param endIndex The end index of the move
+     */
+    public void sendMove(int startIndex, int endIndex){
+        if (isNetworkGame() && !team.equals(currentBoard.turn)){
+            System.out.println(startIndex);
+            System.out.println(endIndex);
+            sender.println(startIndex);
+            sender.println(endIndex);
+            sender.flush();
         }
     }
     
@@ -133,6 +167,7 @@ public class Game {
                         winnerUpdate.addChange(64, winner);
                         currentBoard.forceFenUpdate(winnerUpdate);
                         System.out.println("We have a winner!" + winner);
+                        sendMove(startIndex, endIndex);
                     } else if (draw()){
                         inProgress = false;
                         isDraw = true;
@@ -141,9 +176,11 @@ public class Game {
                         winnerUpdate.addChange(64, winner);
                         currentBoard.forceFenUpdate(winnerUpdate);
                         System.out.println("It's a draw!");
+                        sendMove(startIndex, endIndex);
                     }
                     if (!currentBoard.promotingPawn){
                         fens.add(currentBoard.fen);
+                        sendMove(startIndex, endIndex);
                     }
                     return true;
                 }
@@ -350,5 +387,9 @@ public class Game {
             e.printStackTrace();
         }
         return fens;
+    }
+    
+    public boolean isNetworkGame(){
+        return team != null;
     }
 }

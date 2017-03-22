@@ -342,13 +342,8 @@ public class Display implements ActionListener {
             int returnVal = fc.showOpenDialog(null);
             if (returnVal == JFileChooser.APPROVE_OPTION){
                 File file = fc.getSelectedFile();
-                if (currentGame != null && currentGame.inProgress == true){
-                    int reply = JOptionPane.showConfirmDialog(null, 
-                        "You have a game in progress. Are you sure you want to load a different one?", 
-                            "Load Game?",  JOptionPane.YES_NO_OPTION);
-                    if (reply == JOptionPane.NO_OPTION){
-                        return;
-                    }
+                if (!overrideCurrentGame()){
+                    return;
                 }
                 setMode(GAMEMODE);
                 setUpGameBoardDisplay();
@@ -358,13 +353,8 @@ public class Display implements ActionListener {
             }
                     
         } else if (e.getActionCommand().equals("New Game")){
-            if (currentGame != null && currentGame.inProgress == true){
-                int reply = JOptionPane.showConfirmDialog(null, 
-                        "You have a game in progress. Are you sure you want to start a new one?", 
-                        "New Game?",  JOptionPane.YES_NO_OPTION);
-                if (reply == JOptionPane.NO_OPTION){
-                    return;
-                }
+            if (!overrideCurrentGame()){
+                return;
             }
             setMode(GAMEMODE);
             setUpGameBoardDisplay();
@@ -406,71 +396,146 @@ public class Display implements ActionListener {
         
             //network actions. Hacky space at end of strings to differentiate atm. Should fix
         } else if (e.getActionCommand().equals("New Game ")){
-            if (currentGame != null && currentGame.inProgress == true){
-                int reply = JOptionPane.showConfirmDialog(null, 
-                        "You have a game in progress. Are you sure you want to start a new one?", 
-                        "New Game?",  JOptionPane.YES_NO_OPTION);
-                if (reply == JOptionPane.NO_OPTION){
-                    return;
-                }
+            if (!overrideCurrentGame()){
+                return;
+            }
+            int port = getPort();
+            if (port == -1){
+                return;
             }
             
-            int port = -1;
-            boolean needPort = true;
-            while (needPort){
-                String portS = JOptionPane.showInputDialog("Port Number?");
-                if (portS == null){
-                    return;
-                }
-                try {
-                    port = Integer.parseInt(portS);
-                    needPort = false;
-                } catch (Exception e2){}
-            }
-            System.out.println(port);
+            String team = playAsWhiteOrBlack();
             
             setMode(GAMEMODE);
             setUpGameBoardDisplay();
-            ArrayList<String> derp = new ArrayList<String>();
-            derp.add("rhbqkbhrppppp-pp-----p--------------------------PPPPPPPPRHBQKBHR bffffff00");
-            currentGame = new Game(port, derp);
+            currentGame = new Game(port, team);
             currentReplay = null;
             printBoard();
-        } else if (e.getActionCommand().equals("Connect to Game ")){
-            if (currentGame != null && currentGame.inProgress == true){
-                int reply = JOptionPane.showConfirmDialog(null, 
-                        "You have a game in progress. Are you sure you want to start a new one?", 
-                        "New Game?",  JOptionPane.YES_NO_OPTION);
-                if (reply == JOptionPane.NO_OPTION){
-                    return;
-                }
+            if (!currentGame.team.equals(currentGame.currentBoard.turn)){
+                receiveAndAttempt();
             }
             
-            int port = -1;
-            boolean needPort = true;
-            while (needPort){
-                String portS = JOptionPane.showInputDialog("Port Number?");
-                if (portS == null){
-                    return;
-                }
-                try {
-                    port = Integer.parseInt(portS);
-                    needPort = false;
-                } catch (Exception e2){}
+        } else if (e.getActionCommand().equals("Connect to Game ")){
+            if (!overrideCurrentGame()){
+                return;
             }
-            System.out.println(port);
             
             String hostName = JOptionPane.showInputDialog("Host Name?");
             if (hostName == null){
                 return;
             }
             System.out.println(hostName);
+            int port = getPort();
+            if (port == -1){
+                return;
+            }
+            
+            try {
+                currentGame = new Game(hostName, port);
+            } catch (Exception e2){
+                JOptionPane.showMessageDialog(null, "Could not connect");
+                currentGame = null;
+                return;
+            }
+            System.out.println("canary 1");
             setMode(GAMEMODE);
             setUpGameBoardDisplay();
-            currentGame = new Game(hostName, port);
             currentReplay = null;
             printBoard();
-        } 
+            System.out.println("canary 2");
+            if (!currentGame.team.equals(currentGame.currentBoard.turn)){
+                receiveAndAttempt(); //issues here
+            }
+            
+        } else if (e.getActionCommand().equals("Load Game ")){
+            
+            JFileChooser fc = new JFileChooser();
+            int returnVal = fc.showOpenDialog(null);
+            if (returnVal == JFileChooser.APPROVE_OPTION){
+                File file = fc.getSelectedFile();
+                if (!overrideCurrentGame()){
+                    return;
+                }
+                int port = getPort();
+                if (port == -1){
+                    return;
+                }
+                String team = playAsWhiteOrBlack();
+                
+                setMode(GAMEMODE);
+                setUpGameBoardDisplay();
+                currentGame = new Game(port, Game.getFenListFromFile(file), team);
+                currentReplay = null;
+                printBoard();
+                if (!currentGame.team.equals(currentGame.currentBoard.turn)){
+                    receiveAndAttempt();
+                }
+            }
+        }
+    }
+    
+    /**
+     * Asks the user for a port number. Returns -1 if they cancel
+     * @return the port inputted
+     */
+    public int getPort(){
+        int port = -1;
+        boolean needPort = true;
+        while (needPort){
+            String portS = JOptionPane.showInputDialog("Port Number?");
+            if (portS == null){
+                break;
+            }
+            try {
+                port = Integer.parseInt(portS);
+                if (0 <= port && port <= 65535){
+                    needPort = false;
+                }
+            } catch (Exception e2){}
+        }
+        System.out.println(port);
+        return port; 
+    }
+    
+    /**
+     * If there is a game in progress, asks the user if they want to override that
+     * to start a new one
+     * @return true if they want to continue starting a new one, false otherwise
+     */
+    public boolean overrideCurrentGame(){
+        if (currentGame != null && currentGame.inProgress == true){
+            int reply = JOptionPane.showConfirmDialog(null, 
+                    "You have a game in progress. Are you sure you want to start a new one?", 
+                    "New Game?",  JOptionPane.YES_NO_OPTION);
+            if (reply == JOptionPane.NO_OPTION){
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Asks the user whether they want to play as white or black
+     * @return The color they want to play as, "White" or "Black"
+     */
+    public String playAsWhiteOrBlack(){
+        Object[] options = {"White", "Black"};
+        int result = JOptionPane.showOptionDialog(null, "Play as Black or White?", "Pick a Side",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                options, null);
+        if (result == JOptionPane.YES_OPTION){ //white
+            return "white";
+        } else {
+            return "black";
+        }
+    }
+    
+    public void receiveAndAttempt(){
+        try {
+            int startIndex = Integer.parseInt(currentGame.receiver.readLine());
+            int endIndex = Integer.parseInt(currentGame.receiver.readLine());
+            attemptMove(startIndex, endIndex);
+        } catch (Exception e) {}
     }
     
     /**
@@ -493,6 +558,11 @@ public class Display implements ActionListener {
                 toggleRotate(); //includes board print
             } else {
                 printBoard();
+            }
+            if (!currentGame.currentBoard.promotingPawn && currentGame.isNetworkGame()
+                    && !currentGame.team.equals(currentGame.currentBoard.turn)){
+                
+                receiveAndAttempt();
             }
         }
     }

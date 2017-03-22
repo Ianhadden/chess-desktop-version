@@ -25,6 +25,9 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (disp.currentGame.team != null && !disp.currentGame.team.equals(disp.currentGame.currentBoard.turn)){
+            return; //don't allow drag if network game and not person's turn
+        }
         if (!dragging){ // meaning if this is the beginning of a drag
             Position startPos = getPositionFromPixelCoords(e.getY(), e.getX()); //get position on board
             if (!Board.inBounds(startPos) || disp.currentGame.currentBoard.promotingPawn ||
@@ -64,19 +67,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     public void mouseMoved(MouseEvent e) {
         Position pos = getPositionFromPixelCoords(e.getY(), e.getX());
         boolean changed = false;
-        if (!dragging && !cursor.equals("hand")){
-            for (JLabelPiece p : disp.stuffHolder.boardPieces){
-                if (pos.x == p.position.x && pos.y == p.position.y &&
-                        p.owner.equals(disp.currentGame.currentBoard.turn) 
-                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
-                    disp.frame.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                    cursor = "hand";
-                    changed = true;
-                }
-            }
-            
-        }
-        if (!changed && !dragging && !cursor.equals("pointer")){
+        if (!dragging && !cursor.equals("pointer")){
             boolean shouldStillBeHand = false;
             for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (pos.x == p.position.x && pos.y == p.position.y &&
@@ -90,8 +81,24 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
             if (!shouldStillBeHand){
                 disp.frame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                 cursor = "pointer";
+                changed = true;
             }
-        } 
+        }        
+        if (disp.currentGame.team != null && !disp.currentGame.team.equals(disp.currentGame.currentBoard.turn)){
+            return; //don't allow if network game and not person's turn
+        }
+        
+        if (!changed && !dragging && !cursor.equals("hand")){
+            for (JLabelPiece p : disp.stuffHolder.boardPieces){
+                if (pos.x == p.position.x && pos.y == p.position.y &&
+                        p.owner.equals(disp.currentGame.currentBoard.turn) 
+                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
+                    disp.frame.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                    cursor = "hand";
+                    changed = true;
+                }
+            }  
+        }
     }
 
     @Override
@@ -117,9 +124,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
                 pieceBeingDragged = null;
             }
             mouseMoved(e); // to update the cursor back to pointer or hand
-        }
-        
-        
+        }  
     }
 
     @Override
@@ -146,6 +151,4 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
             return new Position((y - 576) / -64, x / 64);
         }
     }
-    
-
 }
