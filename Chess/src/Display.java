@@ -21,9 +21,9 @@ public class Display implements ActionListener {
     Game currentGame = null;
     Replay currentReplay = null;
     
-    private int mode; // should be set through setMode(int) method
-    final int REPLAYMODE = 1;
-    final int GAMEMODE = 0;
+    private int mode; // should be set through setMode(int) method 
+    final int GAMEMODE = 1;
+    final int REPLAYMODE = 0;
     final int EMPTYMODE = -1;
     
     /**
@@ -93,6 +93,7 @@ public class Display implements ActionListener {
      */
     public JMenuBar setUpMenu(){
         menubar = new ChessJMenuBar();
+        
         JMenu game = new JMenu("Game");
         menubar.add(game);
         JMenuItem newGame = new JMenuItem("New Game");
@@ -105,6 +106,19 @@ public class Display implements ActionListener {
         game.add(newGame);
         game.add(loadGame);
         game.add(saveGame);
+        
+        JMenu network = new JMenu("Network");
+        menubar.add(network);
+        JMenuItem networkNewGame = new JMenuItem("New Game ");
+        JMenuItem networkLoadGame = new JMenuItem("Load Game ");
+        JMenuItem networkConnect = new JMenuItem("Connect to Game ");
+        networkNewGame.addActionListener(this);
+        networkLoadGame.addActionListener(this);
+        networkConnect.addActionListener(this);
+        network.add(networkNewGame);
+        network.add(networkLoadGame);
+        network.add(networkConnect);
+        
         
         JMenu replays = new JMenu("Replays");
         menubar.add(replays);
@@ -389,6 +403,73 @@ public class Display implements ActionListener {
                     }
                 }
             }
+        
+            //network actions. Hacky space at end of strings to differentiate atm. Should fix
+        } else if (e.getActionCommand().equals("New Game ")){
+            if (currentGame != null && currentGame.inProgress == true){
+                int reply = JOptionPane.showConfirmDialog(null, 
+                        "You have a game in progress. Are you sure you want to start a new one?", 
+                        "New Game?",  JOptionPane.YES_NO_OPTION);
+                if (reply == JOptionPane.NO_OPTION){
+                    return;
+                }
+            }
+            
+            int port = -1;
+            boolean needPort = true;
+            while (needPort){
+                String portS = JOptionPane.showInputDialog("Port Number?");
+                if (portS == null){
+                    return;
+                }
+                try {
+                    port = Integer.parseInt(portS);
+                    needPort = false;
+                } catch (Exception e2){}
+            }
+            System.out.println(port);
+            
+            setMode(GAMEMODE);
+            setUpGameBoardDisplay();
+            currentGame = new Game();
+            currentReplay = null;
+            printBoard();
+            currentGame.setUpServer(port);
+        } else if (e.getActionCommand().equals("Connect to Game ")){
+            if (currentGame != null && currentGame.inProgress == true){
+                int reply = JOptionPane.showConfirmDialog(null, 
+                        "You have a game in progress. Are you sure you want to start a new one?", 
+                        "New Game?",  JOptionPane.YES_NO_OPTION);
+                if (reply == JOptionPane.NO_OPTION){
+                    return;
+                }
+            }
+            
+            int port = -1;
+            boolean needPort = true;
+            while (needPort){
+                String portS = JOptionPane.showInputDialog("Port Number?");
+                if (portS == null){
+                    return;
+                }
+                try {
+                    port = Integer.parseInt(portS);
+                    needPort = false;
+                } catch (Exception e2){}
+            }
+            System.out.println(port);
+            
+            String hostName = JOptionPane.showInputDialog("Host Name?");
+            if (hostName == null){
+                return;
+            }
+            System.out.println(hostName);
+            setMode(GAMEMODE);
+            setUpGameBoardDisplay();
+            currentGame = new Game();
+            currentReplay = null;
+            printBoard();
+            currentGame.setUpClient(port, hostName);
         }
     }
     

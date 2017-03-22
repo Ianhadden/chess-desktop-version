@@ -1,13 +1,24 @@
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 
 public class Game {
+    ServerSocket serverSocket;
+    Socket clientSocket;
+    public boolean localGame = true;
     public boolean inProgress = true;
     public boolean isDraw = false;
     public ArrayList<String> fens;
@@ -25,6 +36,33 @@ public class Game {
         currentBoard = new Board(fens.get(fens.size() - 1));
         this.fens = fens;
         inProgress = !checkMate();
+    }
+    
+    public void setUpServer(int port){
+        try {
+            serverSocket = new ServerSocket(port);
+            clientSocket = serverSocket.accept();
+            OutputStream output = clientSocket.getOutputStream();
+            PrintWriter textSend = new PrintWriter(output);
+            textSend.println("hello there");
+            textSend.flush();
+            textSend.close();
+        } catch (IOException e) {
+            System.out.println("There was a problem");
+        }
+    }
+    
+    public void setUpClient(int port, String hostname){
+        try {
+            clientSocket = new Socket(hostname, port);
+            BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            while(true){
+                String s = br.readLine();
+                if (s != null){
+                    System.out.println(s);
+                }
+            }
+        } catch (Exception e){}
     }
     
     /**
@@ -137,16 +175,16 @@ public class Game {
     }
     
     /**
-     * Returns true if every move the current player is checkmated
-     * @return true if every move the current player is checkmated
+     * Returns true if the current player is checkmated
+     * @return true if the current player is checkmated
      */
     public boolean checkMate(){
         return playerInCheck(currentBoard.turn) && everyMoveIsCheck();
     }
     
     /**
-     * Returns true if every move the current player is stalemated
-     * @return true if every move the current player is stalemated
+     * Returns true if the current player is stalemated
+     * @return true if the current player is stalemated
      */
     public boolean staleMate(){
         return (!playerInCheck(currentBoard.turn) && everyMoveIsCheck());
@@ -192,8 +230,7 @@ public class Game {
             }
         }
         int totalBishops = wow + wob + bow + bob;
-        if ((totalBishops == 0 && horseCount == 0) || (totalBishops == 1 && horseCount == 0) ||
-                (totalBishops == 0 && horseCount == 1)){
+        if (totalBishops + horseCount <= 1){
             return true;
         } else if (horseCount == 0){
             if (wow > 0 && bow > 0 && wob == 0 && bob == 0){
