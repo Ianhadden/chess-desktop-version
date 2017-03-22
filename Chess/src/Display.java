@@ -431,10 +431,11 @@ public class Display implements ActionListener {
             
             setMode(GAMEMODE);
             setUpGameBoardDisplay();
-            currentGame = new Game();
+            ArrayList<String> derp = new ArrayList<String>();
+            derp.add("rhbqkbhrppppp-pp-----p--------------------------PPPPPPPPRHBQKBHR bffffff00");
+            currentGame = new Game(port, derp);
             currentReplay = null;
             printBoard();
-            currentGame.setUpServer(port);
         } else if (e.getActionCommand().equals("Connect to Game ")){
             if (currentGame != null && currentGame.inProgress == true){
                 int reply = JOptionPane.showConfirmDialog(null, 
@@ -466,11 +467,10 @@ public class Display implements ActionListener {
             System.out.println(hostName);
             setMode(GAMEMODE);
             setUpGameBoardDisplay();
-            currentGame = new Game();
+            currentGame = new Game(hostName, port);
             currentReplay = null;
             printBoard();
-            currentGame.setUpClient(port, hostName);
-        }
+        } 
     }
     
     /**

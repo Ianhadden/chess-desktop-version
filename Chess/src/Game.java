@@ -22,9 +22,12 @@ public class Game {
     public boolean inProgress = true;
     public boolean isDraw = false;
     public ArrayList<String> fens;
-    public String startFen = "rhbqkbhrpppppppp--------------------------------PPPPPPPPRHBQKBHR wffffff00";
+    public static final String startFen = "rhbqkbhrpppppppp--------------------------------PPPPPPPPRHBQKBHR wffffff00";
     Board currentBoard;
     
+    /**
+     * Constructs a new game using the default fen
+     */
     public Game(){
         currentBoard = new Board(startFen);
         fens = new ArrayList<String>();
@@ -32,19 +35,50 @@ public class Game {
         inProgress = true;
     }
     
+    /**
+     * Creates a new game using the last fen in the provided list
+     * @param fens A history of the game, with the most recent
+     *             game state fen at the end of the list
+     */
     public Game(ArrayList<String> fens){
         currentBoard = new Board(fens.get(fens.size() - 1));
         this.fens = fens;
         inProgress = !checkMate();
     }
     
+    /**
+     * Creates a new game using the default fen and waits for
+     * a connection to be made
+     * @param port The port number to host the game on
+     */
+    public Game(int port){
+        this();
+        setUpServer(port);
+    }
+    
+    /**
+     * Creates a new game using the last fen in the provided list
+     * @param port The port number to host the game on
+     * @param fens A history of the game, with the most recent
+     *             game state fen at the end of the list
+     */
+    public Game(int port, ArrayList<String> fens){
+        this(fens);
+        setUpServer(port);
+    }
+    
+    /**
+     * Using the given port, waits for a connection. Once established,
+     * sends the most recent fen over the network
+     * @param port The port to wait for a connection on
+     */
     public void setUpServer(int port){
         try {
             serverSocket = new ServerSocket(port);
             clientSocket = serverSocket.accept();
             OutputStream output = clientSocket.getOutputStream();
             PrintWriter textSend = new PrintWriter(output);
-            textSend.println("hello there");
+            textSend.println(fens.get(fens.size() - 1));
             textSend.flush();
             textSend.close();
         } catch (IOException e) {
@@ -52,17 +86,25 @@ public class Game {
         }
     }
     
-    public void setUpClient(int port, String hostname){
+    /**
+     * Creates a new game using a fen which is acquired from another
+     * host over a network connection.
+     * @param hostName The host name of the server to connect to
+     * @param port The port of the server to connect to
+     */
+    public Game(String hostName, int port){
         try {
-            clientSocket = new Socket(hostname, port);
+            clientSocket = new Socket(hostName, port);
             BufferedReader br = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            while(true){
-                String s = br.readLine();
-                if (s != null){
-                    System.out.println(s);
-                }
-            }
-        } catch (Exception e){}
+            String initialFenFromNetwork = br.readLine();
+            fens = new ArrayList<String>();
+            inProgress = true;
+            fens.add(initialFenFromNetwork);
+            currentBoard = new Board(fens.get(fens.size() - 1));
+            
+        } catch (Exception e){
+            System.out.println("could not connect");
+        }
     }
     
     /**
