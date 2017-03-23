@@ -18,6 +18,8 @@ public class Display implements ActionListener {
     
     boolean rotated, autorotate; // true if the board is rotated / autorotate is on
     
+    MoveListener moveListener;
+    
     Game currentGame = null;
     Replay currentReplay = null;
     
@@ -221,6 +223,9 @@ public class Display implements ActionListener {
                     currentGame.promotePawn(jb.piece);
                     removePawnPromotionButtons();
                     printBoard();
+                    if (currentGame.isNetworkGame() && !currentGame.team.equals(currentGame.currentBoard.turn)){
+                        listenForMove();
+                    }
                 }
             });
             pawnPromotionButtons.add(jb); // indices 0 - 3 for piece buttons
@@ -290,7 +295,7 @@ public class Display implements ActionListener {
         stuffHolder.sideButtons.pawnPromotionButtons.get(5).setVisible(false); // make big space thingy not
         String[] whitePieces = {"whitequeen.png", "whitebishop.png","whiterook.png","whitehorse.png"};
         String[] blackPieces = {"blackqueen.png", "blackbishop.png","blackrook.png","blackhorse.png"};
-        String[] inUse = currentGame.currentBoard.turn.equals("black")? whitePieces : blackPieces;
+        String[] inUse = currentGame.currentBoard.turn.equals("white")? whitePieces : blackPieces;
         for (int i = 0; i < 4; i++){
             ((JButton) stuffHolder.sideButtons.pawnPromotionButtons.get(i)).setIcon(new ImageIcon(inUse[i]));
             ((JPieceButton) stuffHolder.sideButtons.pawnPromotionButtons.get(i)).piece = "" + inUse[i].charAt(5);
@@ -412,7 +417,7 @@ public class Display implements ActionListener {
             currentReplay = null;
             printBoard();
             if (!currentGame.team.equals(currentGame.currentBoard.turn)){
-                receiveAndAttempt();
+                listenForMove();
             }
             
         } else if (e.getActionCommand().equals("Connect to Game ")){
@@ -444,7 +449,7 @@ public class Display implements ActionListener {
             printBoard();
             System.out.println("canary 2");
             if (!currentGame.team.equals(currentGame.currentBoard.turn)){
-                receiveAndAttempt(); //issues here
+                listenForMove();
             }
             
         } else if (e.getActionCommand().equals("Load Game ")){
@@ -468,7 +473,7 @@ public class Display implements ActionListener {
                 currentReplay = null;
                 printBoard();
                 if (!currentGame.team.equals(currentGame.currentBoard.turn)){
-                    receiveAndAttempt();
+                    listenForMove();
                 }
             }
         }
@@ -524,12 +529,15 @@ public class Display implements ActionListener {
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null,
                 options, null);
         if (result == JOptionPane.YES_OPTION){ //white
+            System.out.println("white");
             return "white";
         } else {
+            System.out.println("black");
             return "black";
         }
     }
     
+    /*
     public void receiveAndAttempt(){
         try {
             int startIndex = Integer.parseInt(currentGame.receiver.readLine());
@@ -537,6 +545,7 @@ public class Display implements ActionListener {
             attemptMove(startIndex, endIndex);
         } catch (Exception e) {}
     }
+    */
     
     /**
      * Attempts a move given the starting and ending index in the fen of the piece being moved
@@ -552,7 +561,12 @@ public class Display implements ActionListener {
         }
         if (moveSuccess){
             if (currentGame.currentBoard.promotingPawn){
-                showPawnPromotionButtons();
+                System.out.println("da team: " + currentGame.team);
+                System.out.println("da turn: " + currentGame.currentBoard.turn);
+                if (currentGame.team.equals(currentGame.currentBoard.turn)){
+                    System.out.println("Showing pawn promotion buttons");
+                    showPawnPromotionButtons();
+                }
             }
             if (autorotate){
                 toggleRotate(); //includes board print
@@ -562,7 +576,7 @@ public class Display implements ActionListener {
             if (!currentGame.currentBoard.promotingPawn && currentGame.isNetworkGame()
                     && !currentGame.team.equals(currentGame.currentBoard.turn)){
                 
-                receiveAndAttempt();
+                listenForMove();
             }
         }
     }
@@ -712,6 +726,14 @@ public class Display implements ActionListener {
         } else {
             return currentReplay.isDraw;
         }
+    }
+    
+    public void listenForMove(){
+        //if (moveListener == null){
+            moveListener = new MoveListener(this);
+        //}
+        System.out.println("listening for move");
+        moveListener.start();
     }
        
     public static void main(String[] args){

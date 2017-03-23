@@ -16,11 +16,14 @@ import java.util.Scanner;
 
 
 public class Game {
-    //ServerSocket serverSocket;
-    //Socket clientSocket;
+    
+    //used for network games
     BufferedReader receiver;
     PrintWriter sender;
-    public String team; //used for network games. "white" or "black", or null if local game
+    public String team; //"white" or "black"
+    int lastStartIndex, lastEndIndex;
+    
+    //used generally
     public boolean inProgress = true;
     public boolean isDraw = false;
     public ArrayList<String> fens;
@@ -133,10 +136,33 @@ public class Game {
      */
     public void sendMove(int startIndex, int endIndex){
         if (isNetworkGame() && !team.equals(currentBoard.turn)){
+            System.out.println("team: " + team);
+            System.out.println("turn: " + currentBoard.turn);
             System.out.println(startIndex);
             System.out.println(endIndex);
+            sender.println("move");
             sender.println(startIndex);
             sender.println(endIndex);
+            sender.flush();
+        }
+    }
+    
+    /**
+     * Sends a pawn promotion move to the other player
+     * @param startIndex The start index of the pawn
+     * @param endIndex The end index of the pawn
+     * @param pawnUpgrade String representing the piece being upgraded to
+     */
+    public void sendMove(int startIndex, int endIndex, String pawnUpgrade){
+        if (isNetworkGame() && !team.equals(currentBoard.turn)){
+            System.out.println("team: " + team);
+            System.out.println("turn: " + currentBoard.turn);
+            System.out.println(startIndex);
+            System.out.println(endIndex);
+            sender.println("promotion");
+            sender.println(startIndex);
+            sender.println(endIndex);
+            sender.println(pawnUpgrade);
             sender.flush();
         }
     }
@@ -181,6 +207,10 @@ public class Game {
                     if (!currentBoard.promotingPawn){
                         fens.add(currentBoard.fen);
                         sendMove(startIndex, endIndex);
+                    } else {
+                        //save to send later
+                        lastStartIndex = startIndex;
+                        lastEndIndex = endIndex;
                     }
                     return true;
                 }
@@ -354,9 +384,11 @@ public class Game {
         }
         Move m = new Move();
         m.addChange(pawnIndex, desired);
+        m.addChange(currentBoard.turnChange()); //new
         currentBoard.forceFenUpdate(m);
         currentBoard.promotingPawn = false;
         fens.add(currentBoard.fen);
+        sendMove(lastStartIndex, lastEndIndex, input);
     }
     
     public void saveGame(File dest){

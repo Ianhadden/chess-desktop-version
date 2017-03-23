@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Iterator;
 
 public class Board {
     String turn; // "white" or "black"
@@ -104,6 +105,14 @@ public class Board {
             Position endPos = position(m.changes.get(1).fenIndex);
             if ((endPos.y == 1 || endPos.y == 8) && piece == 'p'){
                 promotingPawn = true;
+                //remove turn update
+                Iterator<BoardUpdate> itr = m.changes.iterator(); //new
+                while (itr.hasNext()){
+                    if (itr.next().fenIndex == 65){
+                        itr.remove();
+                        break;
+                    }
+                }
             }
         }
         applyMoveSPP(m);
@@ -158,6 +167,7 @@ public class Board {
             String following = fen.substring(b.fenIndex + 1, 74);
             fen = preceding + b.newValue + following;
         }
+        updateBoardFromFen(fen);
     }
     
     /**
