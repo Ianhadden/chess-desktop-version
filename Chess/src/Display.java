@@ -573,9 +573,9 @@ public class Display implements ActionListener {
         JOptionPane.showOptionDialog(null, "Waiting for connection", "Waiting...",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
                 options, null);
-        //if control flow reaches here, it means they pressed cancel or closed the dialog,
-        //so stop listening
-        listener.closeListener();
+        //if control flow reaches here, it may mean they pressed cancel or closed the dialog,
+        //so stop listening if no connection
+        listener.closeListenerIfNoConnection();
     }
     
     public void showEstablishingConnectionDialog(ConnectionSender sender){
@@ -583,9 +583,9 @@ public class Display implements ActionListener {
         JOptionPane.showOptionDialog(null, "Establishing a connection", "Attempting...",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
                 options, null);
-        //if control flow reaches here, it means they pressed cancel or closed the dialog,
-        //so stop listening
-        sender.closeSender();
+        //if control flow reaches here, it may mean they pressed cancel or closed the dialog,
+        //so stop sending if no connection
+        sender.closeSenderIfNoConnection();
     }
     
     /**

@@ -18,6 +18,7 @@ public class ConnectionListener implements Runnable {
     private Thread t;
     private ArrayList<String> fens;
     private ServerSocket serverSocket;
+    private boolean connectionEstablished;
     
     /**
      * Creates a new ConnectionListener
@@ -28,7 +29,8 @@ public class ConnectionListener implements Runnable {
     public ConnectionListener(Display disp, int port, String team){
         this.disp = disp;
         this.team = team;
-        this.port = port;  
+        this.port = port;
+        this.connectionEstablished = false;
     }
     
     /**
@@ -71,6 +73,7 @@ public class ConnectionListener implements Runnable {
             BufferedReader receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             game.sender = sender;
             game.receiver = receiver;
+            connectionEstablished = true;
             disp.connectionEstablished(game); 
         } catch (IOException e) {
             System.out.println("There was a problem");
@@ -88,12 +91,12 @@ public class ConnectionListener implements Runnable {
     }
     
     /**
-     * Closes the listener, stopping it from listening
+     * Closes the listener if there's no connection, stopping it from listening
      * @pre Must already have called start.
      */
-    public void closeListener(){
+    public void closeListenerIfNoConnection(){
         try {
-            if (serverSocket != null){
+            if (serverSocket != null && !connectionEstablished){
                 serverSocket.close();
             }
         } catch (IOException e){}

@@ -18,6 +18,7 @@ public class ConnectionSender implements Runnable {
     private String hostName;
     private Thread t;
     private Socket clientSocket;
+    private boolean connectionEstablished;
     
     /**
      * Creates a new ConnectionListener
@@ -28,7 +29,8 @@ public class ConnectionSender implements Runnable {
     public ConnectionSender(Display disp, int port, String hostName){
         this.disp = disp;
         this.hostName = hostName;
-        this.port = port;  
+        this.port = port;
+        connectionEstablished = false;
     }
     
     /**
@@ -49,9 +51,11 @@ public class ConnectionSender implements Runnable {
             }
             OutputStream output = clientSocket.getOutputStream();
             Game game = new Game(fens);
+            game.receiver = receiver;
             game.sender = new PrintWriter(output);
             game.team = mostRecentLine;
             game.inProgress = true;
+            connectionEstablished = true;
             disp.connectionEstablished(game);
         } catch (IOException e) {
             System.out.println("There was a problem");
@@ -69,14 +73,15 @@ public class ConnectionSender implements Runnable {
     }
     
     /**
-     * Closes the sender, stopping it from sending
+     * Closes the sender if there's no connection, stopping it from sending
      * @pre Must already have called start.
      */
-    public void closeSender(){
+    public void closeSenderIfNoConnection(){    
         try {
-            if (clientSocket != null){
+            if (clientSocket != null && !connectionEstablished){
                 clientSocket.close();
             }
         } catch (IOException e){}
+        
     }
 }
