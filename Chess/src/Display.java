@@ -410,22 +410,16 @@ public class Display implements ActionListener {
             }
             
             String team = playAsWhiteOrBlack();
-            
-            setMode(GAMEMODE);
-            setUpGameBoardDisplay();
-            currentGame = new Game(port, team);
-            currentReplay = null;
-            printBoard();
-            if (!currentGame.team.equals(currentGame.currentBoard.turn)){
-                listenForMove();
-            }
+            ConnectionListener listener = new ConnectionListener(this, port, team);
+            listener.start();
+            showWaitingForConnectionDialog(listener);
             
         } else if (e.getActionCommand().equals("Connect to Game ")){
             if (!overrideCurrentGame()){
                 return;
             }
             
-            String hostName = JOptionPane.showInputDialog("Host Name?");
+            String hostName = JOptionPane.showInputDialog("Host Name?"); //eg localhost or ip number
             if (hostName == null){
                 return;
             }
@@ -438,7 +432,7 @@ public class Display implements ActionListener {
             try {
                 currentGame = new Game(hostName, port);
             } catch (Exception e2){
-                JOptionPane.showMessageDialog(null, "Could not connect");
+                JOptionPane.showMessageDialog(null, "Could not connect: " + e2.getMessage());
                 currentGame = null;
                 return;
             }
@@ -465,6 +459,12 @@ public class Display implements ActionListener {
                 if (port == -1){
                     return;
                 }
+                
+                String team = playAsWhiteOrBlack();
+                ConnectionListener listener = new ConnectionListener(this, port, team, Game.getFenListFromFile(file));
+                listener.start();
+                showWaitingForConnectionDialog(listener);
+                /*
                 String team = playAsWhiteOrBlack();
                 
                 setMode(GAMEMODE);
@@ -475,6 +475,7 @@ public class Display implements ActionListener {
                 if (!currentGame.team.equals(currentGame.currentBoard.turn)){
                     listenForMove();
                 }
+                */
             }
         }
     }
@@ -500,6 +501,33 @@ public class Display implements ActionListener {
         }
         System.out.println(port);
         return port; 
+    }
+    
+    /**
+     * Called when another player establishes a connection
+     * with this player
+     */
+    public void connectionEstablished(Game game){
+        currentGame = game;
+        setMode(GAMEMODE);
+        setUpGameBoardDisplay();
+        currentReplay = null;
+        printBoard();
+        
+        //janky code to programmatically kill "waiting for connection" dialog
+        Window[] windows = Window.getWindows(); 
+        for (Window window : windows) {
+            if (window instanceof JDialog) {
+                JDialog dialog = (JDialog) window;
+                if (dialog.getContentPane().getComponentCount() == 1
+                    && dialog.getContentPane().getComponent(0) instanceof JOptionPane){
+                    dialog.dispose();
+                }
+            }
+        }
+        if (!currentGame.team.equals(currentGame.currentBoard.turn)){
+            listenForMove();
+        }
     }
     
     /**
@@ -535,17 +563,18 @@ public class Display implements ActionListener {
             System.out.println("black");
             return "black";
         }
+        //TODO: handle cancel case
     }
     
-    /*
-    public void receiveAndAttempt(){
-        try {
-            int startIndex = Integer.parseInt(currentGame.receiver.readLine());
-            int endIndex = Integer.parseInt(currentGame.receiver.readLine());
-            attemptMove(startIndex, endIndex);
-        } catch (Exception e) {}
+    public void showWaitingForConnectionDialog(ConnectionListener listener){
+        Object[] options = {"Cancel"};
+        JOptionPane.showOptionDialog(null, "Waiting for connection", "Waiting...",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                options, null);
+        //if control flow reaches here, it means they pressed cancel or closed the dialog,
+        //so stop listening
+        listener.closeListener();
     }
-    */
     
     /**
      * Attempts a move given the starting and ending index in the fen of the piece being moved

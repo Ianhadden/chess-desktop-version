@@ -8,16 +8,19 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.net.InetSocketAddress;
 
 
 public class Game {
     
     //used for network games
+    ServerSocket serverSocket;
     BufferedReader receiver;
     PrintWriter sender;
     public String team; //"white" or "black"
@@ -52,29 +55,24 @@ public class Game {
     }
     
     /**
-     * Creates a new game using the default fen and waits for
-     * a connection to be made
-     * @param port The port number to host the game on
+     * Creates a new game using the default fen and given team
      * @param team The team, "white" or "black", that this player
      *             is playing as
      */
-    public Game(int port, String team){
+    public Game(String team){
         this();
-        setUpServer(port, team);
         this.team = team;
     }
     
     /**
-     * Creates a new game using the last fen in the provided list
-     * @param port The port number to host the game on
-     * @param fens A history of the game, with the most recent
-     *             game state fen at the end of the list
+     * Creates a new game using the given team and the last fen in the provided list
      * @param team The team, "white" or "black", that this player
      *             is playing as
+     * @param fens A history of the game, with the most recent
+     *             game state fen at the end of the list
      */
-    public Game(int port, ArrayList<String> fens, String team){
+    public Game(String team, ArrayList<String >fens){
         this(fens);
-        setUpServer(port, team);
         this.team = team;
     }
     
@@ -85,9 +83,10 @@ public class Game {
      * @param team The team, "white" or "black", that this player is
      *             playing as
      */
+    /*
     public void setUpServer(int port, String team){
         try {
-            ServerSocket serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket(port);
             Socket clientSocket = serverSocket.accept();
             OutputStream output = clientSocket.getOutputStream();
             sender = new PrintWriter(output);
@@ -106,6 +105,7 @@ public class Game {
             System.out.println("There was a problem");
         }
     }
+    */
     
     /**
      * Creates a new game using a fen which is acquired from another
@@ -114,7 +114,9 @@ public class Game {
      * @param port The port of the server to connect to
      */
     public Game(String hostName, int port) throws Exception {
-        Socket clientSocket = new Socket(hostName, port);
+        System.out.println("derp1");
+        Socket clientSocket = new Socket(InetAddress.getByName(hostName), port);
+        System.out.println("derp2");
         receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         fens = new ArrayList<String>();
         String mostRecentLine = receiver.readLine();
@@ -254,7 +256,7 @@ public class Game {
     }
     
     /**
-     * Retunrs true if the given player is in check on this game's current board.
+     * Returns true if the given player is in check on this game's current board.
      * @param player The player to check on
      * @return true if in check
      */
