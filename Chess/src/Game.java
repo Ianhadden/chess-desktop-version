@@ -113,6 +113,7 @@ public class Game {
      * @param hostName The host name of the server to connect to
      * @param port The port of the server to connect to
      */
+    /*
     public Game(String hostName, int port) throws Exception {
         System.out.println("derp1");
         Socket clientSocket = new Socket(InetAddress.getByName(hostName), port);
@@ -130,6 +131,7 @@ public class Game {
         inProgress = true;
         currentBoard = new Board(fens.get(fens.size() - 1));
     }
+    */
     
     /**
      * Sends a move to the other player, if it's a network game

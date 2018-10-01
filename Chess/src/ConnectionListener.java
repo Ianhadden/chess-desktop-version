@@ -12,12 +12,12 @@ import java.util.ArrayList;
  * Used for host games
  */
 public class ConnectionListener implements Runnable {
-    Display disp;
-    int port;
-    String team;
-    Thread t;
-    ArrayList<String> fens;
-    ServerSocket serverSocket;
+    private Display disp;
+    private int port;
+    private String team;
+    private Thread t;
+    private ArrayList<String> fens;
+    private ServerSocket serverSocket;
     
     /**
      * Creates a new ConnectionListener
@@ -78,8 +78,7 @@ public class ConnectionListener implements Runnable {
     }
     
     /**
-     * Creates a new thread and listens for moves on that thread
-     * Applies the move when it is sent
+     * Creates a new thread and listens for connections on that thread
      */
     public void start(){
         if (t == null){
@@ -94,7 +93,9 @@ public class ConnectionListener implements Runnable {
      */
     public void closeListener(){
         try {
-            serverSocket.close();
+            if (serverSocket != null){
+                serverSocket.close();
+            }
         } catch (IOException e){}
     }
 }

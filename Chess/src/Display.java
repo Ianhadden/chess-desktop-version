@@ -410,6 +410,9 @@ public class Display implements ActionListener {
             }
             
             String team = playAsWhiteOrBlack();
+            if (team == null){
+                return;
+            }
             ConnectionListener listener = new ConnectionListener(this, port, team);
             listener.start();
             showWaitingForConnectionDialog(listener);
@@ -428,7 +431,7 @@ public class Display implements ActionListener {
             if (port == -1){
                 return;
             }
-            
+            /*
             try {
                 currentGame = new Game(hostName, port);
             } catch (Exception e2){
@@ -436,6 +439,11 @@ public class Display implements ActionListener {
                 currentGame = null;
                 return;
             }
+            */
+            ConnectionSender sender = new ConnectionSender(this, port, hostName);
+            sender.start();
+            showEstablishingConnectionDialog(sender);
+            /*
             System.out.println("canary 1");
             setMode(GAMEMODE);
             setUpGameBoardDisplay();
@@ -445,6 +453,7 @@ public class Display implements ActionListener {
             if (!currentGame.team.equals(currentGame.currentBoard.turn)){
                 listenForMove();
             }
+            */
             
         } else if (e.getActionCommand().equals("Load Game ")){
             
@@ -461,21 +470,12 @@ public class Display implements ActionListener {
                 }
                 
                 String team = playAsWhiteOrBlack();
+                if (team == null){
+                    return;
+                }
                 ConnectionListener listener = new ConnectionListener(this, port, team, Game.getFenListFromFile(file));
                 listener.start();
                 showWaitingForConnectionDialog(listener);
-                /*
-                String team = playAsWhiteOrBlack();
-                
-                setMode(GAMEMODE);
-                setUpGameBoardDisplay();
-                currentGame = new Game(port, Game.getFenListFromFile(file), team);
-                currentReplay = null;
-                printBoard();
-                if (!currentGame.team.equals(currentGame.currentBoard.turn)){
-                    listenForMove();
-                }
-                */
             }
         }
     }
@@ -540,7 +540,7 @@ public class Display implements ActionListener {
             int reply = JOptionPane.showConfirmDialog(null, 
                     "You have a game in progress. Are you sure you want to start a new one?", 
                     "New Game?",  JOptionPane.YES_NO_OPTION);
-            if (reply == JOptionPane.NO_OPTION){
+            if (reply == JOptionPane.NO_OPTION || reply == JOptionPane.CLOSED_OPTION){
                 return false;
             }
         }
@@ -550,6 +550,8 @@ public class Display implements ActionListener {
     /**
      * Asks the user whether they want to play as white or black
      * @return The color they want to play as, "White" or "Black"
+     *         If the user closes the dialog without picking an
+     *         option, returns null
      */
     public String playAsWhiteOrBlack(){
         Object[] options = {"White", "Black"};
@@ -559,11 +561,11 @@ public class Display implements ActionListener {
         if (result == JOptionPane.YES_OPTION){ //white
             System.out.println("white");
             return "white";
-        } else {
+        } else if (result == JOptionPane.NO_OPTION){
             System.out.println("black");
             return "black";
         }
-        //TODO: handle cancel case
+        return null;
     }
     
     public void showWaitingForConnectionDialog(ConnectionListener listener){
@@ -574,6 +576,16 @@ public class Display implements ActionListener {
         //if control flow reaches here, it means they pressed cancel or closed the dialog,
         //so stop listening
         listener.closeListener();
+    }
+    
+    public void showEstablishingConnectionDialog(ConnectionSender sender){
+        Object[] options = {"Cancel"};
+        JOptionPane.showOptionDialog(null, "Establishing a connection", "Attempting...",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                options, null);
+        //if control flow reaches here, it means they pressed cancel or closed the dialog,
+        //so stop listening
+        sender.closeSender();
     }
     
     /**
