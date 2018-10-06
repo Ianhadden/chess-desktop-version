@@ -76,7 +76,7 @@ public class ConnectionListener implements Runnable {
             connectionEstablished = true;
             disp.connectionEstablished(game); 
         } catch (IOException e) {
-            System.out.println("There was a problem");
+            disp.connectionProblem("Something went wrong :(");
         }
     }
     

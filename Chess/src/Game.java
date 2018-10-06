@@ -77,73 +77,12 @@ public class Game {
     }
     
     /**
-     * Using the given port, waits for a connection. Once established,
-     * sends the most recent fen over the network
-     * @param port The port to wait for a connection on
-     * @param team The team, "white" or "black", that this player is
-     *             playing as
-     */
-    /*
-    public void setUpServer(int port, String team){
-        try {
-            serverSocket = new ServerSocket(port);
-            Socket clientSocket = serverSocket.accept();
-            OutputStream output = clientSocket.getOutputStream();
-            sender = new PrintWriter(output);
-            //sends all the fens followed by the team the other
-            //player should play as
-            for (String fen : fens){
-                sender.println(fen);
-                sender.flush();
-            }
-            String otherTeam = team.equals("white")? "black" : "white";
-            sender.println(otherTeam);
-            sender.flush();
-            //sender.close();
-            receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-        } catch (IOException e) {
-            System.out.println("There was a problem");
-        }
-    }
-    */
-    
-    /**
-     * Creates a new game using a fen which is acquired from another
-     * host over a network connection.
-     * @param hostName The host name of the server to connect to
-     * @param port The port of the server to connect to
-     */
-    /*
-    public Game(String hostName, int port) throws Exception {
-        System.out.println("derp1");
-        Socket clientSocket = new Socket(InetAddress.getByName(hostName), port);
-        System.out.println("derp2");
-        receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-        fens = new ArrayList<String>();
-        String mostRecentLine = receiver.readLine();
-        while (!mostRecentLine.equals("white") && !mostRecentLine.equals("black")){
-            fens.add(mostRecentLine);
-            mostRecentLine = receiver.readLine();
-        }
-        OutputStream output = clientSocket.getOutputStream();
-        sender = new PrintWriter(output);
-        team = mostRecentLine;
-        inProgress = true;
-        currentBoard = new Board(fens.get(fens.size() - 1));
-    }
-    */
-    
-    /**
      * Sends a move to the other player, if it's a network game
      * @param startIndex The start index of the move
      * @param endIndex The end index of the move
      */
     public void sendMove(int startIndex, int endIndex){
         if (isNetworkGame() && !team.equals(currentBoard.turn)){
-            System.out.println("team: " + team);
-            System.out.println("turn: " + currentBoard.turn);
-            System.out.println(startIndex);
-            System.out.println(endIndex);
             sender.println("move");
             sender.println(startIndex);
             sender.println(endIndex);
@@ -152,21 +91,28 @@ public class Game {
     }
     
     /**
-     * Sends a pawn promotion move to the other player
+     * Sends a pawn promotion move to the other player. Only sends if it's a network game
      * @param startIndex The start index of the pawn
      * @param endIndex The end index of the pawn
      * @param pawnUpgrade String representing the piece being upgraded to
      */
     public void sendMove(int startIndex, int endIndex, String pawnUpgrade){
         if (isNetworkGame() && !team.equals(currentBoard.turn)){
-            System.out.println("team: " + team);
-            System.out.println("turn: " + currentBoard.turn);
-            System.out.println(startIndex);
-            System.out.println(endIndex);
             sender.println("promotion");
             sender.println(startIndex);
             sender.println(endIndex);
             sender.println(pawnUpgrade);
+            sender.flush();
+        }
+    }
+    
+    /**
+     * Tells the other player that this player is stopping the game. Only sends if
+     * it's a network game.
+     */
+    public void sendStop(){
+        if (isNetworkGame()){
+            sender.println("stop");
             sender.flush();
         }
     }

@@ -22,20 +22,22 @@ public class MoveListener implements Runnable {
      */
     public void run(){
         try {
-            System.out.println("LISTENING1");
             String type = disp.currentGame.receiver.readLine();
-            System.out.println("LISTENING2");
+            if (type.equals("stop")){
+                System.out.println("stop received");
+                disp.connectionProblem("The other player stopped the game");
+                return;
+            }
             int startIndex = Integer.parseInt(disp.currentGame.receiver.readLine());
-            System.out.println("LISTENING3");
             int endIndex = Integer.parseInt(disp.currentGame.receiver.readLine());
-            System.out.println("LISTENING4");
             disp.attemptMove(startIndex, endIndex);
-            System.out.println("LISTENING5");
             if (type.equals("promotion")){
                 disp.currentGame.promotePawn(disp.currentGame.receiver.readLine());
                 disp.printBoard(); //since promotePawn bypasses board
             }
-        } catch (Exception e) {System.out.println("NO BUENO: " + e.getMessage());}
+        } catch (Exception e) {
+            disp.connectionProblem("The connection was lost");
+        }
     }
     
     /**

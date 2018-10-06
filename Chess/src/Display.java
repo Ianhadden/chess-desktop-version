@@ -531,6 +531,28 @@ public class Display implements ActionListener {
     }
     
     /**
+     * Called if there is a connection problem. Kills "Waiting to Connect" screen.
+     * Opens dialog with given text
+     */
+    public void connectionProblem(String toDisplay){
+        //janky code to programmatically kill "waiting for connection" dialog
+        Window[] windows = Window.getWindows(); 
+        for (Window window : windows) {
+            if (window instanceof JDialog) {
+                JDialog dialog = (JDialog) window;
+                if (dialog.getContentPane().getComponentCount() == 1
+                    && dialog.getContentPane().getComponent(0) instanceof JOptionPane){
+                    dialog.dispose();
+                }
+            }
+        }
+        JOptionPane.showMessageDialog(null,
+                toDisplay,
+                "There Was A Problem",
+                JOptionPane.ERROR_MESSAGE);
+    }
+    
+    /**
      * If there is a game in progress, asks the user if they want to override that
      * to start a new one
      * @return true if they want to continue starting a new one, false otherwise
@@ -542,6 +564,9 @@ public class Display implements ActionListener {
                     "New Game?",  JOptionPane.YES_NO_OPTION);
             if (reply == JOptionPane.NO_OPTION || reply == JOptionPane.CLOSED_OPTION){
                 return false;
+            }
+            if (currentGame.isNetworkGame()){
+                currentGame.sendStop();
             }
         }
         return true;
@@ -571,7 +596,7 @@ public class Display implements ActionListener {
     public void showWaitingForConnectionDialog(ConnectionListener listener){
         Object[] options = {"Cancel"};
         JOptionPane.showOptionDialog(null, "Waiting for connection", "Waiting...",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE, null,
                 options, null);
         //if control flow reaches here, it may mean they pressed cancel or closed the dialog,
         //so stop listening if no connection
@@ -581,7 +606,7 @@ public class Display implements ActionListener {
     public void showEstablishingConnectionDialog(ConnectionSender sender){
         Object[] options = {"Cancel"};
         JOptionPane.showOptionDialog(null, "Establishing a connection", "Attempting...",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE, null,
                 options, null);
         //if control flow reaches here, it may mean they pressed cancel or closed the dialog,
         //so stop sending if no connection
@@ -602,10 +627,7 @@ public class Display implements ActionListener {
         }
         if (moveSuccess){
             if (currentGame.currentBoard.promotingPawn){
-                System.out.println("da team: " + currentGame.team);
-                System.out.println("da turn: " + currentGame.currentBoard.turn);
-                if (currentGame.team.equals(currentGame.currentBoard.turn)){
-                    System.out.println("Showing pawn promotion buttons");
+                if (!currentGame.isNetworkGame() || currentGame.team.equals(currentGame.currentBoard.turn)){
                     showPawnPromotionButtons();
                 }
             }
@@ -667,6 +689,9 @@ public class Display implements ActionListener {
         }
     }
     
+    /**
+     * Updates the graphics of the board to reflect changes
+     */
     public void printBoard(){
         String uneditedFen = mode == GAMEMODE? currentGame.currentBoard.fen : currentReplay.currentFen;
         //remove pieces already being displayed
@@ -769,11 +794,12 @@ public class Display implements ActionListener {
         }
     }
     
+    /**
+     * Listen for a move on the network
+     * @pre A connection must have been started at some point prior
+     */
     public void listenForMove(){
-        //if (moveListener == null){
-            moveListener = new MoveListener(this);
-        //}
-        System.out.println("listening for move");
+        moveListener = new MoveListener(this);
         moveListener.start();
     }
        

@@ -39,9 +39,7 @@ public class ConnectionSender implements Runnable {
      */
     public void run(){
         try {
-            System.out.println("trying to connect");
             clientSocket = new Socket(InetAddress.getByName(hostName), port);
-            System.out.println("adsfsd");
             BufferedReader receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             ArrayList<String >fens = new ArrayList<String>();
             String mostRecentLine = receiver.readLine();
@@ -58,7 +56,7 @@ public class ConnectionSender implements Runnable {
             connectionEstablished = true;
             disp.connectionEstablished(game);
         } catch (IOException e) {
-            System.out.println("There was a problem");
+            disp.connectionProblem("Coundn't connect");
         }
     }
     
