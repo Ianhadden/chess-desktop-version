@@ -9,8 +9,8 @@ import java.net.Socket;
 import java.util.ArrayList;
 
 /**
- * Class to listen for a new connection from the network.
- * Used for host games
+ * Class to send a new connection across the network
+ * Used for client games
  */
 public class ConnectionSender implements Runnable {
     private Display disp;
@@ -21,10 +21,10 @@ public class ConnectionSender implements Runnable {
     private boolean connectionEstablished;
     
     /**
-     * Creates a new ConnectionListener
+     * Creates a new ConnectionSender
      * @param disp The display to link to
-     * @param port The port to listen on
-     * @param team The team this player will be
+     * @param port The port to connect to
+     * @param hostName the host name to connect to
      */
     public ConnectionSender(Display disp, int port, String hostName){
         this.disp = disp;
@@ -34,25 +34,21 @@ public class ConnectionSender implements Runnable {
     }
     
     /**
-     * Listens for a connection. Blocks until there is one
-     * Then sends game info across to setup the game
+     * Sends a connection across the network. Blocks until it finds one
+     * Then reads in game data from the host and sets up the game
      */
     public void run(){
         try {
             clientSocket = new Socket(InetAddress.getByName(hostName), port);
             BufferedReader receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            ArrayList<String >fens = new ArrayList<String>();
+            ArrayList<String> fens = new ArrayList<String>();
             String mostRecentLine = receiver.readLine();
             while (!mostRecentLine.equals("white") && !mostRecentLine.equals("black")){
                 fens.add(mostRecentLine);
                 mostRecentLine = receiver.readLine();
             }
             OutputStream output = clientSocket.getOutputStream();
-            Game game = new Game(fens);
-            game.receiver = receiver;
-            game.sender = new PrintWriter(output);
-            game.team = mostRecentLine;
-            game.inProgress = true;
+            NetworkGame game = new NetworkGame(mostRecentLine, fens, new PrintWriter(output), receiver);
             connectionEstablished = true;
             disp.connectionEstablished(game);
         } catch (IOException e) {
@@ -61,7 +57,7 @@ public class ConnectionSender implements Runnable {
     }
     
     /**
-     * Creates a new thread and attempts to open a connection with it
+     * Creates a new thread and attempts to establish a connection with it
      */
     public void start(){
         if (t == null){

@@ -1,30 +1,13 @@
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Scanner;
-import java.net.InetSocketAddress;
-
 
 public class Game {
     
-    //used for network games
-    ServerSocket serverSocket;
-    BufferedReader receiver;
-    PrintWriter sender;
     public String team; //"white" or "black"
-    int lastStartIndex, lastEndIndex;
     
     //used generally
     public boolean inProgress = true;
@@ -77,47 +60,6 @@ public class Game {
     }
     
     /**
-     * Sends a move to the other player, if it's a network game
-     * @param startIndex The start index of the move
-     * @param endIndex The end index of the move
-     */
-    public void sendMove(int startIndex, int endIndex){
-        if (isNetworkGame() && !team.equals(currentBoard.turn)){
-            sender.println("move");
-            sender.println(startIndex);
-            sender.println(endIndex);
-            sender.flush();
-        }
-    }
-    
-    /**
-     * Sends a pawn promotion move to the other player. Only sends if it's a network game
-     * @param startIndex The start index of the pawn
-     * @param endIndex The end index of the pawn
-     * @param pawnUpgrade String representing the piece being upgraded to
-     */
-    public void sendMove(int startIndex, int endIndex, String pawnUpgrade){
-        if (isNetworkGame() && !team.equals(currentBoard.turn)){
-            sender.println("promotion");
-            sender.println(startIndex);
-            sender.println(endIndex);
-            sender.println(pawnUpgrade);
-            sender.flush();
-        }
-    }
-    
-    /**
-     * Tells the other player that this player is stopping the game. Only sends if
-     * it's a network game.
-     */
-    public void sendStop(){
-        if (isNetworkGame()){
-            sender.println("stop");
-            sender.flush();
-        }
-    }
-    
-    /**
      * Given the fen index of the piece being moved and the
      * fen index of where it is being moved to, attempts to
      * execute that move. Returns true if the move succeeded.
@@ -143,7 +85,6 @@ public class Game {
                         winnerUpdate.addChange(64, winner);
                         currentBoard.forceFenUpdate(winnerUpdate);
                         System.out.println("We have a winner!" + winner);
-                        sendMove(startIndex, endIndex);
                     } else if (draw()){
                         inProgress = false;
                         isDraw = true;
@@ -152,15 +93,9 @@ public class Game {
                         winnerUpdate.addChange(64, winner);
                         currentBoard.forceFenUpdate(winnerUpdate);
                         System.out.println("It's a draw!");
-                        sendMove(startIndex, endIndex);
                     }
                     if (!currentBoard.promotingPawn){
                         fens.add(currentBoard.fen);
-                        sendMove(startIndex, endIndex);
-                    } else {
-                        //save to send later
-                        lastStartIndex = startIndex;
-                        lastEndIndex = endIndex;
                     }
                     return true;
                 }
@@ -338,7 +273,6 @@ public class Game {
         currentBoard.forceFenUpdate(m);
         currentBoard.promotingPawn = false;
         fens.add(currentBoard.fen);
-        sendMove(lastStartIndex, lastEndIndex, input);
     }
     
     public void saveGame(File dest){
@@ -371,7 +305,11 @@ public class Game {
         return fens;
     }
     
+    /**
+     * 
+     * @return whether or not this is a network game.
+     */
     public boolean isNetworkGame(){
-        return team != null;
+        return false;
     }
 }

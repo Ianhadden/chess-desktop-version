@@ -24,9 +24,9 @@ public class Display implements ActionListener {
     Replay currentReplay = null;
     
     private int mode; // should be set through setMode(int) method 
-    final int GAMEMODE = 1;
-    final int REPLAYMODE = 0;
-    final int EMPTYMODE = -1;
+    final static int GAMEMODE = 1;
+    final static int REPLAYMODE = 0;
+    final static int EMPTYMODE = -1;
     
     /**
      * Create a new Display
@@ -566,7 +566,7 @@ public class Display implements ActionListener {
                 return false;
             }
             if (currentGame.isNetworkGame()){
-                currentGame.sendStop();
+                ((NetworkGame) currentGame).sendStop();
             }
         }
         return true;
@@ -796,11 +796,12 @@ public class Display implements ActionListener {
     
     /**
      * Listen for a move on the network
-     * @pre A connection must have been started at some point prior
+     * @pre A connection must have been started at some point prior. Must be a network game
      */
     public void listenForMove(){
-        moveListener = new MoveListener(this);
-        moveListener.start();
+        if (currentGame.isNetworkGame()) {
+            ((NetworkGame) currentGame).listenForMove(this);
+        }
     }
        
     public static void main(String[] args){

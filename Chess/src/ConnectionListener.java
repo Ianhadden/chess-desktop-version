@@ -49,13 +49,7 @@ public class ConnectionListener implements Runnable {
      * Listens for a connection. Blocks until there is one
      * Then sends game info across to setup the game
      */
-    public void run(){
-        Game game;
-        if (fens == null){
-            game = new Game(team);
-        } else {
-            game = new Game(team, fens);
-        }
+    public void run(){     
         try { 
             serverSocket = new ServerSocket(port);
             Socket clientSocket = serverSocket.accept(); //blocks
@@ -63,7 +57,7 @@ public class ConnectionListener implements Runnable {
             PrintWriter sender = new PrintWriter(output);
             //sends all the fens followed by the team the other
             //player should play as
-            for (String fen : game.fens){
+            for (String fen : fens){
                 sender.println(fen);
                 sender.flush();
             }
@@ -71,9 +65,13 @@ public class ConnectionListener implements Runnable {
             sender.println(otherTeam);
             sender.flush();
             BufferedReader receiver = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            game.sender = sender;
-            game.receiver = receiver;
             connectionEstablished = true;
+            NetworkGame game;
+            if (fens == null){
+                game = new NetworkGame(team, sender, receiver);
+            } else {
+                game = new NetworkGame(team, fens, sender, receiver);
+            }
             disp.connectionEstablished(game); 
         } catch (IOException e) {
             disp.connectionProblem("Something went wrong :(");
