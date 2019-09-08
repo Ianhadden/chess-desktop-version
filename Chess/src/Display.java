@@ -422,7 +422,7 @@ public class Display implements ActionListener {
                 return;
             }
             
-            String hostName = JOptionPane.showInputDialog("Host Name?"); //eg localhost or ip number
+            String hostName = JOptionPane.showInputDialog("Host Name or IP Address?"); //eg localhost or ip number
             if (hostName == null){
                 return;
             }

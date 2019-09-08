@@ -52,7 +52,7 @@ public class ConnectionSender implements Runnable {
             connectionEstablished = true;
             disp.connectionEstablished(game);
         } catch (IOException e) {
-            disp.connectionProblem("Coundn't connect");
+            disp.connectionProblem("Couldn't connect: " + e.getMessage());
         }
     }
     

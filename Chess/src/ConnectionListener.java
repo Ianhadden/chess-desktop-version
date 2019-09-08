@@ -31,6 +31,8 @@ public class ConnectionListener implements Runnable {
         this.team = team;
         this.port = port;
         this.connectionEstablished = false;
+        this.fens = new ArrayList<String>();
+        this.fens.add(Game.startFen);
     }
     
     /**
