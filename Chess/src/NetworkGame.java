@@ -2,18 +2,42 @@ import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * For games played with someone else over the network
  */
 
-public class NetworkGame extends Game {
+public class NetworkGame extends Game implements GameWithOpponent {
 
     //used for network games
     ServerSocket serverSocket;
     BufferedReader receiver;
     PrintWriter sender;
     int lastStartIndex, lastEndIndex;
+    private String team;
+    
+    /**
+     * Creates a new game using the default fen and given team
+     * @param team The team, "white" or "black", that this player
+     *             is playing as
+     */
+    public NetworkGame(String team){
+        super();
+        this.team = team;
+    }
+    
+    /**
+     * Creates a new game using the given team and the last fen in the provided list
+     * @param team The team, "white" or "black", that this player
+     *             is playing as
+     * @param fens A history of the game, with the most recent
+     *             game state fen at the end of the list
+     */
+    public NetworkGame(String team, ArrayList<String> fens){
+        super(fens);
+        this.team = team;
+    }
     
     /**
      * Create a new network game
@@ -23,7 +47,7 @@ public class NetworkGame extends Game {
      * @param receiver BufferedReader to read data from network
      */
     public NetworkGame(String team, ArrayList<String> fens, PrintWriter sender, BufferedReader receiver){
-        super(team, fens);
+        this(team, fens);
         this.sender = sender;
         this.receiver = receiver;
     }
@@ -35,7 +59,7 @@ public class NetworkGame extends Game {
      * @param receiver BufferedReader to read data from network
      */
     public NetworkGame(String team, PrintWriter sender, BufferedReader receiver){
-        super(team);
+        this(team);
         this.sender = sender;
         this.receiver = receiver;
     }
@@ -46,7 +70,7 @@ public class NetworkGame extends Game {
      * @param endIndex The end index of the move
      */
     public void sendMove(int startIndex, int endIndex){
-        if (isNetworkGame() && !team.equals(currentBoard.turn)){
+        if (isNetworkGame() && !team.equals(currentBoard.turn())){
             sender.println("move");
             sender.println(startIndex);
             sender.println(endIndex);
@@ -61,7 +85,7 @@ public class NetworkGame extends Game {
      * @param pawnUpgrade String representing the piece being upgraded to
      */
     public void sendMove(int startIndex, int endIndex, String pawnUpgrade){
-        if (isNetworkGame() && !team.equals(currentBoard.turn)){
+        if (isNetworkGame() && !team.equals(currentBoard.turn())){
             sender.println("promotion");
             sender.println(startIndex);
             sender.println(endIndex);
@@ -83,6 +107,16 @@ public class NetworkGame extends Game {
     
     /**
      * Start listening for a move from the network. Move will be applied
+     * once heard
+     * @param disp The display to update once a move has been heard
+     */
+    @Override
+    public void doOpponentMove(Display disp) {
+        listenForMove(disp);
+    }
+    
+    /**
+     * Start listening for a move from the network. Move will be applied
      * once heard.
      * @param disp The display to update once a move head been heard
      */
@@ -100,48 +134,18 @@ public class NetworkGame extends Game {
      * @return true if the move was successful
      */
     @Override
-    public boolean attemptMove(int startIndex, int endIndex){
-        ArrayList<Move> moves = currentBoard.generateMoves();
-        String playerMoving = currentBoard.turn;
-        for (Move m : moves){
-            if (m.changes.get(0).fenIndex == startIndex &&
-                m.changes.get(1).fenIndex == endIndex){
-                currentBoard.applyMove(m);
-                if (playerInCheck(playerMoving)){
-                    currentBoard.undoMove();
-                    return false;
-                } else {
-                    if (checkMate()){
-                        inProgress = false;
-                        Move winnerUpdate = new Move();
-                        char winner = currentBoard.turn.equals("white")?'b':'w';
-                        winnerUpdate.addChange(64, winner);
-                        currentBoard.forceFenUpdate(winnerUpdate);
-                        System.out.println("We have a winner!" + winner);
-                        sendMove(startIndex, endIndex);
-                    } else if (draw()){
-                        inProgress = false;
-                        isDraw = true;
-                        Move winnerUpdate = new Move();
-                        char winner = 'd';
-                        winnerUpdate.addChange(64, winner);
-                        currentBoard.forceFenUpdate(winnerUpdate);
-                        System.out.println("It's a draw!");
-                        sendMove(startIndex, endIndex);
-                    }
-                    if (!currentBoard.promotingPawn){
-                        fens.add(currentBoard.fen);
-                        sendMove(startIndex, endIndex);
-                    } else {
-                        //save to send later
-                        lastStartIndex = startIndex;
-                        lastEndIndex = endIndex;
-                    }
-                    return true;
-                }
+    public boolean attemptMove(int startIndex, int endIndex) {     
+        boolean success = super.attemptMove(startIndex, endIndex);
+        if (success) {
+            if (currentBoard.promotingPawn() != null) {
+                //save to send later
+                lastStartIndex = startIndex;
+                lastEndIndex = endIndex;
+            } else {
+                sendMove(startIndex, endIndex);
             }
         }
-        return false;
+        return success;
     }
     
     /**
@@ -164,5 +168,21 @@ public class NetworkGame extends Game {
     @Override
     public boolean isNetworkGame(){
         return true;
+    }
+    
+    /**
+     * Return the team name of the local player
+     */
+    @Override
+    public String getTeam(){
+        return this.team;
+    }
+    
+    /**
+     * Returns true if it is the local human player's turn
+     */
+    @Override
+    public boolean isLocalPlayersTurn() {
+        return getTeam().equals(currentBoard.turn());
     }
 }

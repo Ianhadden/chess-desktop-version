@@ -25,12 +25,13 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
     
     @Override
     public void mouseDragged(MouseEvent e) {
-        if (disp.currentGame.team != null && !disp.currentGame.team.equals(disp.currentGame.currentBoard.turn)){
-            return; //don't allow drag if network game and not person's turn
+        if ((disp.currentGame instanceof GameWithOpponent) 
+                && !((GameWithOpponent) disp.currentGame).isLocalPlayersTurn()){
+            return; //don't allow drag if game has opponent and not person's turn
         }
         if (!dragging){ // meaning if this is the beginning of a drag
             Position startPos = getPositionFromPixelCoords(e.getY(), e.getX()); //get position on board
-            if (!Board.inBounds(startPos) || disp.currentGame.currentBoard.promotingPawn ||
+            if (!Board.inBounds(startPos) || disp.currentGame.currentBoard.promotingPawn() != null ||
                                             !disp.currentGame.inProgress){
                 return;
             }
@@ -41,7 +42,7 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
             //so we can drag it.
             for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (startPos.x == p.position.x && startPos.y == p.position.y &&
-                        p.owner.equals(disp.currentGame.currentBoard.turn) ){
+                        p.owner.equals(disp.currentGame.currentBoard.turn()) ){
                     
                     disp.frame.setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
                             new ImageIcon("drag.png").getImage(),
@@ -71,8 +72,8 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
             boolean shouldStillBeHand = false;
             for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (pos.x == p.position.x && pos.y == p.position.y &&
-                        p.owner.equals(disp.currentGame.currentBoard.turn) 
-                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
+                        p.owner.equals(disp.currentGame.currentBoard.turn()) 
+                        && disp.currentGame.currentBoard.promotingPawn() == null && disp.currentGame.inProgress){
                     
                     shouldStillBeHand = true;
                     break;
@@ -84,15 +85,17 @@ public class MouseHandler implements MouseListener, MouseMotionListener{
                 changed = true;
             }
         }        
-        if (disp.currentGame.team != null && !disp.currentGame.team.equals(disp.currentGame.currentBoard.turn)){
-            return; //don't allow if network game and not person's turn
+        if ((disp.currentGame instanceof GameWithOpponent)
+                && disp.currentGame.inProgress
+                && !((GameWithOpponent) disp.currentGame).isLocalPlayersTurn()){
+            return; //don't allow if game has opponent and not person's turn
         }
         
         if (!changed && !dragging && !cursor.equals("hand")){
             for (JLabelPiece p : disp.stuffHolder.boardPieces){
                 if (pos.x == p.position.x && pos.y == p.position.y &&
-                        p.owner.equals(disp.currentGame.currentBoard.turn) 
-                        && !disp.currentGame.currentBoard.promotingPawn && disp.currentGame.inProgress){
+                        p.owner.equals(disp.currentGame.currentBoard.turn()) 
+                        && disp.currentGame.currentBoard.promotingPawn() == null && disp.currentGame.inProgress){
                     disp.frame.setCursor(new Cursor(Cursor.HAND_CURSOR));
                     cursor = "hand";
                     changed = true;

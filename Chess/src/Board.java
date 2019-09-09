@@ -1,12 +1,13 @@
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Board {
-    String turn; // "white" or "black"
     String fen; // the fen for this board
     String oldFen; // the immediately previous fen
     String oldOldFen; // fen before that one
-    boolean promotingPawn; // true if a pawn is being promoted
+    //boolean promotingPawn; // true if a pawn is being promoted
     
     /**
      * Creates a new Board using the given fen
@@ -14,20 +15,19 @@ public class Board {
      */
     public Board(String startFen){
         this.fen = startFen;
-        updateBoardFromFen(startFen);
-        promotingPawn = false;
+        //promotingPawn = false;
     }
     
     /**
-     * Updates this board given a fen. (Updates whose turn it is)
-     * @param fen The fen to update from
+     * Creates and returns a deep copy of this board
+     * @return the copied Board
      */
-    public void updateBoardFromFen(String fen){
-        if (fen.charAt(65) == 'w'){
-            turn = "white";
-        } else {
-            turn = "black";
-        }
+    public Board copyBoard(){
+        Board copy = new Board(fen);
+        copy.oldFen = this.oldFen;
+        copy.oldOldFen = this.oldOldFen;
+        //copy.promotingPawn = this.promotingPawn;
+        return copy;
     }
     
     /**
@@ -91,7 +91,6 @@ public class Board {
         oldOldFen = oldFen;
         oldFen = fen;
         fen = workingFen;
-        updateBoardFromFen(fen);
     }
     
     /**
@@ -99,21 +98,29 @@ public class Board {
      * @param m The move to be applied
      */
     public void applyMove(Move m){
-        //check for pawn being applicable for promotion
-        if (m.changes.size() > 1){
-            char piece = Character.toLowerCase(m.changes.get(1).newValue);
-            Position endPos = position(m.changes.get(1).fenIndex);
-            if ((endPos.y == 1 || endPos.y == 8) && piece == 'p'){
-                promotingPawn = true;
-                //remove turn update
-                Iterator<BoardUpdate> itr = m.changes.iterator(); //new
-                while (itr.hasNext()){
-                    if (itr.next().fenIndex == 65){
-                        itr.remove();
-                        break;
+        if (!m.isPawnPromotion) {
+            //check if pawn will need to promote after move
+            boolean shouldPromotePawnNext = false;
+            if (m.changes.size() > 1){ // necessary?
+                char piece = Character.toLowerCase(m.getPieceMoving());
+                Position endPos = position(m.getEndIndex());
+                if ((endPos.y == 1 || endPos.y == 8) && piece == 'p'){
+                    
+                    shouldPromotePawnNext = true;
+                    //remove turn update
+                    Iterator<BoardUpdate> itr = m.changes.iterator(); //new
+                    while (itr.hasNext()){
+                        if (itr.next().fenIndex == 65){
+                            itr.remove();
+                            break;
+                        }
                     }
                 }
             }
+            //promotingPawn = shouldPromotePawnNext;
+            
+            // can probably move applyMoveSPP logic here
+            // and deprecate applyMoveSPP now
         }
         applyMoveSPP(m);
     }
@@ -124,19 +131,37 @@ public class Board {
     public void undoMove(){
         fen = oldFen;
         oldFen = oldOldFen;
-        updateBoardFromFen(fen);
     }
     
     /**
-     * Returns a list of all possible moves on the board. This list includes moves
-     * which put the moving player in check.
+     * Returns a list of all possible moves on the board.
+     * Does not include moves that would put the player in check
      * @return a list of all possible moves on the board
      */
-    public ArrayList<Move> generateMoves(){
+    public List<Move> generateMoves() {
+        List<Move> moves = generateMovesCore(false);
+        return moves.stream().filter(m -> !movePutsPlayerInCheck(turn(), m)).collect(Collectors.toList());
+    }
+    
+    /**
+     * Generates the list of moves, including those that would put the moving player in check
+     * @ignoreCastlingCheckChecks Normally you can only castle if the spaces in between the king
+     *                            and where it is moving to would not be check for the king, and its
+     *                            current space is not check. If true, this ignores those checks.
+     * @return List of moves
+     */
+    public List<Move> generateMovesCore(boolean ignoreCastlingCheckChecks) {
         ArrayList<Move> moves = new ArrayList<Move>();
         
+        // if the player whose turn it is is promoting a pawn, return pawn promotion moves
+        // need to check that these values are the same because sometimes we check the opponent's
+        // moves even when you're in the middle of promoting.
+        if (turn().equals(promotingPawn())) {
+            addPawnPromotionMoves(moves);
+            return moves;
+        }
         for (int i = 0; i < 64; i++){
-            if (owner(i).equals(turn)){
+            if (owner(i).equals(turn())){
                 char c = Character.toLowerCase(fen.charAt(i));
                 if (c == 'h'){
                     addHorseMoves(moves, i);
@@ -150,11 +175,172 @@ public class Board {
                     addRookMoves(moves, i);
                     addBishopMoves(moves, i);
                 } else if (c == 'k'){
-                    addKingMoves(moves, i);
+                    addKingMoves(moves, i, ignoreCastlingCheckChecks);
                 }
             }
         }
         return moves;
+    }
+    
+    /**
+     * If a player is in the middle of promoting a pawn, returns that player. null otherwise
+     * @return "white", "black" or null
+     */
+    public String promotingPawn() {
+        //boolean yup = false;
+        for (int i = 0; i < 8; i++) {
+            if (fen.charAt(i) == 'P') {
+                return "black";
+            }
+        }
+        for (int i = 56; i < 64; i++) {
+            if (fen.charAt(i) == 'p') {
+                return "white";
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Checks if the given move puts the given player in check
+     * @param player The player whose check status is being checked
+     * @param m The move to check
+     * @return true if move puts them in check. else false
+     */
+    public boolean movePutsPlayerInCheck(String player, Move m) {
+        //applyMoveSPP(m); // this is the cause of my woes
+        applyMove(m); // lol fixed?
+        boolean check = playerInCheck(player);
+        undoMove();
+        return check;
+    }
+    
+    /**
+     * Returns true if the given player is in check on given current board
+     * @param b The board to check
+     * @param player The player to test on
+     * @return true if in check (or checkmate)
+     */
+    public boolean playerInCheck(String player) {
+        String trueTurn = turn();
+        char king;
+        Move switchTurn = new Move();
+        if (player == "white"){
+            switchTurn.addChange(65, 'b');
+            king = 'k';
+        } else {
+            switchTurn.addChange(65, 'w');
+            king = 'K';
+        }
+        forceFenUpdate(switchTurn);
+        int kingIndex = -1; //initialized so compiler will shut up
+        for (int i = 0; i < 64; i++){
+            if (fen.charAt(i) == king){
+                kingIndex = i;
+                break;
+            }
+        }
+        Move switchTurnBack = new Move();
+        switchTurnBack.addChange(65, trueTurn.charAt(0));
+        List<Move> movesList = generateMovesCore(true);
+        for (Move m : movesList){
+            if (m.changes.get(1).fenIndex == kingIndex){
+                forceFenUpdate(switchTurnBack);
+                return true;
+            }
+        }
+        forceFenUpdate(switchTurnBack);
+        return false;
+    }
+    
+    /**
+     * Returns true if every move the current player can make would result
+     * in their being in check.
+     * @return true if every move the current player can make would result
+     * in their being in check.
+     */
+    public boolean everyMoveIsCheck(){
+        String currentPlayer = turn();
+        List<Move> movesList = generateMoves();
+        for (Move m : movesList){
+            applyMoveSPP(m);
+            if (!playerInCheck(currentPlayer)){
+                undoMove();
+                return false;
+            } else {
+                undoMove();
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Returns true if the current player is checkmated
+     * @return true if the current player is checkmated
+     */
+    public boolean checkMate(){
+        return playerInCheck(turn()) && everyMoveIsCheck();
+    }
+    
+    /**
+     * Returns true if the current player is stalemated
+     * @return true if the current player is stalemated
+     */
+    public boolean staleMate(){
+        return (!playerInCheck(turn()) && everyMoveIsCheck());
+    }
+    
+    /**
+     * Returns true if the board setup is a draw
+     * @return true if the board setup is a draw
+     */
+    public boolean draw(){
+        if (staleMate()){
+            return true;
+        }
+        int horseCount = 0;
+        //bishop counts
+        int wow = 0; // white on white
+        int wob = 0; // white on black
+        int bow = 0; // black on white
+        int bob = 0; // black on black
+        for (int i = 0; i < 63; i++){
+            char c = fen.charAt(i);
+            if (c == 'p' || c == 'P' || c == 'r' || c == 'R' || c == 'Q' || c == 'q'){
+                return false;
+            } else if (c == 'h' || c == 'H'){
+                horseCount++;
+            } else if (c == 'b'){
+                Position pos = position(i);
+                if ((pos.x + pos.y) % 2 == 0){// 0 == black, 1 == white
+                    wob++;
+                } else {
+                    wow++;
+                }
+            } else if (c == 'B'){
+                Position pos = position(i);
+                if ((pos.x + pos.y) % 2 == 0){// 0 == black, 1 == white
+                    bob++;
+                } else {
+                    bow++;
+                }
+            }
+            if (horseCount > 1){
+                return false;
+            }
+        }
+        int totalBishops = wow + wob + bow + bob;
+        if (totalBishops + horseCount <= 1){
+            return true;
+        } else if (horseCount == 0){
+            if (wow > 0 && bow > 0 && wob == 0 && bob == 0){
+                return true;
+            }
+            if (wob > 0 && bob > 0 && wow == 0 && bow == 0){
+                return true;
+            }
+        }
+        return false;
     }
     
     /**
@@ -167,7 +353,6 @@ public class Board {
             String following = fen.substring(b.fenIndex + 1, 74);
             fen = preceding + b.newValue + following;
         }
-        updateBoardFromFen(fen);
     }
     
     /**
@@ -175,8 +360,11 @@ public class Board {
      * king being moved and the moves list
      * @param moves The moves list
      * @param i The fenIndex of the king
+     * @param ignoreCheckChecks Normally you can only castle if the spaces in between the king
+     *                          and where it is moving to would not be check for the king, and its
+     *                          current space is not check. If true, this ignores those checks.
      */
-    public void addKingMoves(ArrayList<Move> moves, int i){
+    public void addKingMoves(ArrayList<Move> moves, int i, boolean ignoreCheckChecks){
         int kingHasMoved, leftRookHasMoved, rightRookHasMoved;
         Position pos = position(i);
         addKingMoveIfValid(moves, i, new Position(pos.y + 1, pos.x + 1));
@@ -187,7 +375,7 @@ public class Board {
         addKingMoveIfValid(moves, i, new Position(pos.y - 1, pos.x));
         addKingMoveIfValid(moves, i, new Position(pos.y - 1, pos.x + 1));
         addKingMoveIfValid(moves, i, new Position(pos.y, pos.x + 1));
-        if (turn.equals("white")){
+        if (turn().equals("white")){
             leftRookHasMoved = 66; //fen indexes
             kingHasMoved = 67;
             rightRookHasMoved = 68;
@@ -202,16 +390,21 @@ public class Board {
             Position spaceBetween1 = new Position(pos.y, pos.x - 3);
             Position spaceBetween2 = new Position(pos.y, pos.x - 2);
             Position spaceBetween3 = new Position(pos.y, pos.x - 1);
-            if (owner(leftRookPos).equals(turn) && fen.charAt(fenIndex(spaceBetween1)) == '-' &&
+            if (owner(leftRookPos).equals(turn()) && fen.charAt(fenIndex(spaceBetween1)) == '-' &&
                 fen.charAt(fenIndex(spaceBetween2)) == '-' && fen.charAt(fenIndex(spaceBetween3)) == '-' &&
-                !Game.playerInCheck(this, turn)){
-                //checking that the spot in between isn't check
-                Move nudgeLeft = createStandardMove(i, spaceBetween3);
-                nudgeLeft.addChange(kingHasMoved, 't');
-                String mover = turn;
-                applyMove(nudgeLeft);
-                boolean inCheck = Game.playerInCheck(this, mover);
-                undoMove();
+                ((ignoreCheckChecks) || !playerInCheck(turn()))){
+                boolean inCheck;
+                if (ignoreCheckChecks) {
+                    inCheck = false;
+                } else {
+                    //checking that the spot in between isn't check
+                    Move nudgeLeft = createStandardMove(i, spaceBetween3);
+                    nudgeLeft.addChange(kingHasMoved, 't');
+                    String mover = turn();
+                    applyMove(nudgeLeft);
+                    inCheck = playerInCheck(mover);
+                    undoMove();
+                }
                 if (!inCheck){ //finally adding the move
                     Move m = createStandardMove(i, position(i - 2));
                     m.addChange(fenIndex(leftRookPos), '-');
@@ -227,15 +420,20 @@ public class Board {
             Position rightRookPos = new Position(pos.y, pos.x + 3);
             Position spaceBetween1 = new Position(pos.y, pos.x + 2);
             Position spaceBetween2 = new Position(pos.y, pos.x + 1);
-            if (owner(rightRookPos).equals(turn) && fen.charAt(fenIndex(spaceBetween1)) == '-' &&
-                fen.charAt(fenIndex(spaceBetween2)) == '-' && !Game.playerInCheck(this, turn)){
-                //checking that the spot in between isn't check
-                Move nudgeRight = createStandardMove(i, spaceBetween2);
-                nudgeRight.addChange(kingHasMoved, 't');
-                String mover = turn;
-                applyMove(nudgeRight);
-                boolean inCheck = Game.playerInCheck(this, mover);
-                undoMove();
+            if (owner(rightRookPos).equals(turn()) && fen.charAt(fenIndex(spaceBetween1)) == '-' &&
+                fen.charAt(fenIndex(spaceBetween2)) == '-' && (ignoreCheckChecks || !playerInCheck(turn()))){
+                boolean inCheck;
+                if (ignoreCheckChecks) {
+                    inCheck = false;
+                } else {
+                    //checking that the spot in between isn't check
+                    Move nudgeRight = createStandardMove(i, spaceBetween2);
+                    nudgeRight.addChange(kingHasMoved, 't');
+                    String mover = turn();
+                    applyMove(nudgeRight);
+                    inCheck = playerInCheck(mover);
+                    undoMove();
+                }
                 if (!inCheck){ //finally adding the move
                     Move m = createStandardMove(i, position(i + 2));
                     m.addChange(fenIndex(rightRookPos), '-');
@@ -256,10 +454,10 @@ public class Board {
      */
     public void addBishopMoves(ArrayList<Move> moves, int i){
         Position pos = position(i);
-        String enemy = turn.equals("white")? "black" : "white";
+        String enemy = turn().equals("white")? "black" : "white";
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y + j, pos.x + j);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 moves.add(createStandardMove(i, dest));
                 if (owner(fenIndex(dest)).equals(enemy)){
                     break;
@@ -270,7 +468,7 @@ public class Board {
         }
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y - j, pos.x - j);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 moves.add(createStandardMove(i, dest));
                 if (owner(fenIndex(dest)).equals(enemy)){
                     break;
@@ -281,7 +479,7 @@ public class Board {
         }
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y + j, pos.x - j);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 moves.add(createStandardMove(i, dest));
                 if (owner(fenIndex(dest)).equals(enemy)){
                     break;
@@ -292,7 +490,7 @@ public class Board {
         }
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y - j, pos.x + j);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 moves.add(createStandardMove(i, dest));
                 if (owner(fenIndex(dest)).equals(enemy)){
                     break;
@@ -310,7 +508,7 @@ public class Board {
      */
     public void addRookHasMovedIfApplicable(Move m, int i){
         if (Character.toLowerCase(fen.charAt(i)) == 'r'){
-            if (turn.equals("white")){
+            if (turn().equals("white")){
                 if (i == 0){
                     m.addChange(66, 't');
                 } else if (i == 7){
@@ -334,10 +532,10 @@ public class Board {
      */
     public void addRookMoves(ArrayList<Move> moves, int i){
         Position pos = position(i);
-        String enemy = turn.equals("white")? "black" : "white";
+        String enemy = turn().equals("white")? "black" : "white";
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y + j, pos.x);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 Move m = createStandardMove(i, dest);
                 addRookHasMovedIfApplicable(m, i);
                 moves.add(m);
@@ -350,7 +548,7 @@ public class Board {
         }
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y - j, pos.x);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 Move m = createStandardMove(i, dest);
                 addRookHasMovedIfApplicable(m, i);
                 moves.add(m);
@@ -363,7 +561,7 @@ public class Board {
         }
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y, pos.x + j);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 Move m = createStandardMove(i, dest);
                 addRookHasMovedIfApplicable(m, i);
                 moves.add(m);
@@ -376,7 +574,7 @@ public class Board {
         }
         for (int j = 1; j < 8; j++){
             Position dest = new Position(pos.y, pos.x - j);
-            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn)){
+            if (inBounds(dest) && !owner(fenIndex(dest)).equals(turn())){
                 Move m = createStandardMove(i, dest);
                 addRookHasMovedIfApplicable(m, i);
                 moves.add(m);
@@ -397,22 +595,36 @@ public class Board {
      */
     public void addPawnMoves(ArrayList<Move> moves, int i){
         //Variables vary depending on whose turn it is
-        int switcher = turn.equals("white")? 1 : -1;
-        int pawnLine = turn.equals("white")? 2 : 7;
-        String enemy = turn.equals("white")? "black" : "white";
+        int switcher = turn().equals("white")? 1 : -1;
+        int pawnLine = turn().equals("white")? 2 : 7;
+        String enemy = turn().equals("white")? "black" : "white";
 
         Position pos = position(i);
         Position inFront = new Position(pos.y + switcher, pos.x);
         if (inBounds(inFront) && fen.charAt(fenIndex(inFront)) == '-'){
-            moves.add(createStandardMove(i, inFront));
+            if (inFront.y == 1 || inFront.y == 8) {
+                moves.add(createMoveNoTurnChange(i, inFront)); //will pawn promote so don't switch turn
+            } else {
+                moves.add(createStandardMove(i, inFront));
+            }
         }
         Position frontLeft = new Position(pos.y + switcher, pos.x - 1);
         if (inBounds(frontLeft) && owner(fenIndex(frontLeft)).equals(enemy)){
             moves.add(createStandardMove(i, frontLeft));
+            if (frontLeft.y == 1 || frontLeft.y == 8) {
+                moves.add(createMoveNoTurnChange(i, frontLeft));
+            } else {
+                moves.add(createStandardMove(i, frontLeft));
+            }
         }
         Position frontRight = new Position(pos.y + switcher, pos.x + 1);
         if (inBounds(frontRight) && owner(fenIndex(frontRight)).equals(enemy)){
             moves.add(createStandardMove(i, frontRight));
+            if (frontRight.y == 1 || frontRight.y == 8) {
+                moves.add(createMoveNoTurnChange(i, frontRight));
+            } else {
+                moves.add(createStandardMove(i, frontRight));
+            }
         }
         //where this piece would double jump to
         Position doubleJump = new Position(pos.y + (2 * switcher), pos.x);
@@ -442,7 +654,55 @@ public class Board {
     }
     
     /**
-     * Given a fenIndex i of the piece being moved and it's end position,
+     * Scans the board for a pawn being promoted, and adds
+     * the available pawn promotion moves to the moves list
+     * @param moves The moves list to add to
+     * @pre board state must be valid (ie no two pawns both promoting)
+     */
+    public void addPawnPromotionMoves(ArrayList<Move> moves) {
+        char[] upgrades = {'r', 'b', 'h', 'q'};
+        int pawnIndex = -1;
+        //scan bottom or top row to find pawn
+        if (turn().equals("black")) {
+            for (int i = 0; i < 8; i++){
+                if (fen.charAt(i) == 'P') {
+                    pawnIndex = i;
+                    break;
+                }
+            }
+            try {
+                for (int i = 0; i < upgrades.length; i++) {
+                    Move m = new Move(true);
+                    m.addChange(pawnIndex, Character.toUpperCase(upgrades[i]));
+                    m.addChange(turnChange());
+                    noDoubleJumpers(m);
+                    moves.add(m);
+                }
+            } catch (IllegalArgumentException e) {
+                System.out.println(fen);
+                throw e;
+            }
+        } else {
+            if (pawnIndex == -1){
+                for (int i = 56; i < 64; i++){
+                    if (fen.charAt(i) == 'p') {
+                        pawnIndex = i;
+                        break;
+                    }
+                }
+            }
+            for (int i = 0; i < upgrades.length; i++) {
+                Move m = new Move(true);
+                m.addChange(pawnIndex, upgrades[i]);
+                m.addChange(turnChange());
+                noDoubleJumpers(m);
+                moves.add(m);
+            }
+        }
+    }
+    
+    /**
+     * Given a fenIndex i of the piece being moved and its end position,
      * returns a Move object representing that move. This is a standard
      * move in that it includes update to the starting position, ending position,
      * a turn change, and no double jumpers.
@@ -451,10 +711,24 @@ public class Board {
      * @return Move m The move
      */
     public Move createStandardMove(int i, Position endPos){
+        Move m = createMoveNoTurnChange(i, endPos);
+        m.addChange(turnChange());
+        return m;
+    }
+    
+    /**
+     * Given a fenIndex i of the piece being moved and its end position,
+     * returns a Move object representing that move. This is a 
+     * move that includes update to the starting position, ending position,
+     * and no double jumpers.
+     * @param i The fenIndex of the piece being moved
+     * @param endPos The end destination of the move
+     * @return Move m The move
+     */
+    public Move createMoveNoTurnChange(int i, Position endPos){
         Move m = new Move();
         m.addChange(i, '-');
         m.addChange(fenIndex(endPos), fen.charAt(i));
-        m.addChange(turnChange());
         noDoubleJumpers(m);
         return m;
     }
@@ -488,7 +762,7 @@ public class Board {
      * @param endPos The position of the piece after the move is made
      */
     public void addMoveIfValid(ArrayList<Move> moves, int i, Position endPos){
-        if (inBounds(endPos) && !(turn.equals(owner(endPos)))){
+        if (inBounds(endPos) && !(turn().equals(owner(endPos)))){
             moves.add(createStandardMove(i, endPos));
         }
     }
@@ -500,8 +774,8 @@ public class Board {
      * @param endPos
      */
     public void addKingMoveIfValid(ArrayList<Move> moves, int i, Position endPos){
-        int hasMovedIndex = turn.equals("white")? 67 : 70;
-        if (inBounds(endPos) && !(turn.equals(owner(endPos)))){
+        int hasMovedIndex = turn().equals("white")? 67 : 70;
+        if (inBounds(endPos) && !(turn().equals(owner(endPos)))){
             Move m = createStandardMove(i, endPos);
             m.addChange(hasMovedIndex, 't');
             moves.add(m);
@@ -514,7 +788,7 @@ public class Board {
      */
     public BoardUpdate turnChange(){
         char newTurn;
-        if (turn.equals("white")){
+        if (turn().equals("white")){
             newTurn = 'b';
         } else {
             newTurn = 'w';
@@ -548,5 +822,17 @@ public class Board {
      */
     public static boolean inBounds(Position pos){
         return (pos.x > 0 && pos.x < 9 && pos.y > 0 && pos.y < 9);
+    }
+    
+    /**
+     * Returns "white" or "black" based upon whose turn it is
+     * @return "white or "black"
+     */
+    public String turn() {
+        if (fen.charAt(65) == 'w') {
+            return "white";
+        } else {
+            return "black";
+        }
     }
 }

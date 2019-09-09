@@ -220,12 +220,8 @@ public class Display implements ActionListener {
             JPieceButton jb = new JPieceButton();
             jb.addActionListener(new ActionListener(){
                 public void actionPerformed(ActionEvent e) {
-                    currentGame.promotePawn(jb.piece);
                     removePawnPromotionButtons();
-                    printBoard();
-                    if (currentGame.isNetworkGame() && !currentGame.team.equals(currentGame.currentBoard.turn)){
-                        listenForMove();
-                    }
+                    attemptPawnPromotion(jb.piece);
                 }
             });
             pawnPromotionButtons.add(jb); // indices 0 - 3 for piece buttons
@@ -295,7 +291,7 @@ public class Display implements ActionListener {
         stuffHolder.sideButtons.pawnPromotionButtons.get(5).setVisible(false); // make big space thingy not
         String[] whitePieces = {"whitequeen.png", "whitebishop.png","whiterook.png","whitehorse.png"};
         String[] blackPieces = {"blackqueen.png", "blackbishop.png","blackrook.png","blackhorse.png"};
-        String[] inUse = currentGame.currentBoard.turn.equals("white")? whitePieces : blackPieces;
+        String[] inUse = currentGame.currentBoard.turn().equals("white")? whitePieces : blackPieces;
         for (int i = 0; i < 4; i++){
             ((JButton) stuffHolder.sideButtons.pawnPromotionButtons.get(i)).setIcon(new ImageIcon(inUse[i]));
             ((JPieceButton) stuffHolder.sideButtons.pawnPromotionButtons.get(i)).piece = "" + inUse[i].charAt(5);
@@ -308,7 +304,7 @@ public class Display implements ActionListener {
      */
     public void removePawnPromotionButtons(){
         stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;" + 
-                currentGame.currentBoard.turn + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
+                currentGame.currentBoard.turn() + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
         stuffHolder.sideButtons.pawnPromotionButtons.get(4).setVisible(false);
         stuffHolder.sideButtons.pawnPromotionButtons.get(5).setVisible(true);   
     }
@@ -350,29 +346,67 @@ public class Display implements ActionListener {
                 if (!overrideCurrentGame()){
                     return;
                 }
-                setMode(GAMEMODE);
-                setUpGameBoardDisplay();
-                currentGame = new Game(Game.getFenListFromFile(file));
-                currentReplay = null;
-                printBoard();
+                int AIReply = JOptionPane.showConfirmDialog(null, 
+                        "Play against an AI opponent?", 
+                        "How 'bout it?",  JOptionPane.YES_NO_OPTION);
+                if (AIReply == JOptionPane.CLOSED_OPTION) {
+                    return;
+                }
+                if (AIReply == JOptionPane.YES_OPTION) {
+                    String team = playAsWhiteOrBlack();
+                    if (team == null) {
+                        return;
+                    }
+                    setMode(GAMEMODE);
+                    setUpGameBoardDisplay();
+                    currentGame = new AIOpponentGame(team, Game.getFenListFromFile(file));
+                    currentReplay = null;
+                    printBoard();
+                    doOpponentsMoveIfApplicable();
+                } else {
+                    setMode(GAMEMODE);
+                    setUpGameBoardDisplay();
+                    currentGame = new Game(Game.getFenListFromFile(file));
+                    currentReplay = null;
+                    printBoard();
+                }
             }
                     
         } else if (e.getActionCommand().equals("New Game")){
             if (!overrideCurrentGame()){
                 return;
             }
-            setMode(GAMEMODE);
-            setUpGameBoardDisplay();
-            currentGame = new Game();
-            currentReplay = null;
-            printBoard();
+            int AIReply = JOptionPane.showConfirmDialog(null, 
+                    "Play against an AI opponent?", 
+                    "How 'bout it?",  JOptionPane.YES_NO_OPTION);
+            if (AIReply == JOptionPane.CLOSED_OPTION) {
+                return;
+            }
+            if (AIReply == JOptionPane.YES_OPTION) {
+                String team = playAsWhiteOrBlack();
+                if (team == null) {
+                    return;
+                }
+                setMode(GAMEMODE);
+                setUpGameBoardDisplay();
+                currentGame = new AIOpponentGame(team);
+                currentReplay = null;
+                printBoard();
+                doOpponentsMoveIfApplicable();
+            } else {
+                setMode(GAMEMODE);
+                setUpGameBoardDisplay();
+                currentGame = new Game();
+                currentReplay = null;
+                printBoard();
+            }
             
         } else if (e.getActionCommand().equals("Save Game")){
             if (currentGame == null){
                 JOptionPane.showMessageDialog(null,
                         "No game is in progress");
                 return;  
-            } else if (currentGame != null && currentGame.currentBoard.promotingPawn){
+            } else if (currentGame != null && currentGame.currentBoard.promotingPawn() != null){
                 JOptionPane.showMessageDialog(null,
                         "Complete pawn promotion first");
                 return;
@@ -507,7 +541,7 @@ public class Display implements ActionListener {
      * Called when another player establishes a connection
      * with this player
      */
-    public void connectionEstablished(Game game){
+    public void connectionEstablished(NetworkGame game){
         currentGame = game;
         setMode(GAMEMODE);
         setUpGameBoardDisplay();
@@ -525,9 +559,7 @@ public class Display implements ActionListener {
                 }
             }
         }
-        if (!currentGame.team.equals(currentGame.currentBoard.turn)){
-            listenForMove();
-        }
+        doOpponentsMoveIfApplicable();
     }
     
     /**
@@ -584,10 +616,8 @@ public class Display implements ActionListener {
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null,
                 options, null);
         if (result == JOptionPane.YES_OPTION){ //white
-            System.out.println("white");
             return "white";
         } else if (result == JOptionPane.NO_OPTION){
-            System.out.println("black");
             return "black";
         }
         return null;
@@ -626,8 +656,8 @@ public class Display implements ActionListener {
             moveSuccess = currentGame.attemptMove(startingPosIndex, endingPosIndex);
         }
         if (moveSuccess){
-            if (currentGame.currentBoard.promotingPawn){
-                if (!currentGame.isNetworkGame() || currentGame.team.equals(currentGame.currentBoard.turn)){
+            if (currentGame.currentBoard.promotingPawn() != null){
+                if (!(currentGame instanceof GameWithOpponent) || ((GameWithOpponent) currentGame).getTeam().equals(currentGame.currentBoard.turn())){
                     showPawnPromotionButtons();
                 }
             }
@@ -636,12 +666,20 @@ public class Display implements ActionListener {
             } else {
                 printBoard();
             }
-            if (!currentGame.currentBoard.promotingPawn && currentGame.isNetworkGame()
-                    && !currentGame.team.equals(currentGame.currentBoard.turn)){
-                
-                listenForMove();
-            }
+            //if (!currentGame.currentBoard.promotingPawn) { // I think this check isn't necessary
+                doOpponentsMoveIfApplicable();
+            //}
         }
+    }
+    
+    /**
+     * Given the piece to upgrade to as a String, attempt a pawn upgrade
+     * @param desiredPiece
+     */
+    public void attemptPawnPromotion(String desiredPiece) {
+        currentGame.promotePawn(desiredPiece);
+        printBoard();
+        doOpponentsMoveIfApplicable();
     }
     
     /**
@@ -724,7 +762,7 @@ public class Display implements ActionListener {
                 
             }
         }
-        if (inProgress() && (mode == REPLAYMODE || !currentGame.currentBoard.promotingPawn)){ 
+        if (inProgress() && (mode == REPLAYMODE || currentGame.currentBoard.promotingPawn() == null)){ 
             // update dialogue for whose turn it is
             String turn = getTurn();
             stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;" + turn + "'s<br>&nbsp;&nbsp;&nbsp;turn<html>");
@@ -770,11 +808,25 @@ public class Display implements ActionListener {
      */
     public String getTurn(){
         if (mode == GAMEMODE){
-            return currentGame.currentBoard.turn.substring(0, 1).toUpperCase() +
-                    currentGame.currentBoard.turn.substring(1, 5);
+            return currentGame.currentBoard.turn().substring(0, 1).toUpperCase() +
+                    currentGame.currentBoard.turn().substring(1, 5);
         } else { // mode == REPLAYMODE
             char c = currentReplay.currentFen.charAt(65);
             return c == 'w' ? "White" : "Black";
+        }
+    }
+    
+    /**
+     * If this is a game against an opponent and it's their turn,
+     * tries to apply their move.
+     */
+    public void doOpponentsMoveIfApplicable() {
+        if (!(currentGame instanceof GameWithOpponent)) {
+            return;
+        }
+        GameWithOpponent gameWithOpponent = (GameWithOpponent) currentGame;
+        if (!gameWithOpponent.isLocalPlayersTurn()) {
+            gameWithOpponent.doOpponentMove(this);
         }
     }
     
@@ -791,16 +843,6 @@ public class Display implements ActionListener {
             return currentGame.isDraw;
         } else {
             return currentReplay.isDraw;
-        }
-    }
-    
-    /**
-     * Listen for a move on the network
-     * @pre A connection must have been started at some point prior. Must be a network game
-     */
-    public void listenForMove(){
-        if (currentGame.isNetworkGame()) {
-            ((NetworkGame) currentGame).listenForMove(this);
         }
     }
        
