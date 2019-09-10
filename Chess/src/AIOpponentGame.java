@@ -4,6 +4,7 @@ import java.util.ArrayList;
 public class AIOpponentGame extends Game implements GameWithOpponent {
     
     private String team;
+    private MiniMax ai;
 
     @Override
     public String getTeam() {
@@ -18,6 +19,7 @@ public class AIOpponentGame extends Game implements GameWithOpponent {
     public AIOpponentGame(String team){
         super();
         this.team = team;
+        ai = new MiniMax();
     }
     
     /**
@@ -29,6 +31,7 @@ public class AIOpponentGame extends Game implements GameWithOpponent {
     public AIOpponentGame(String team, ArrayList<String> fens){
         super(fens);
         this.team = team;
+        ai = new MiniMax();
     }
     
     /**
@@ -37,7 +40,7 @@ public class AIOpponentGame extends Game implements GameWithOpponent {
      */
     @Override
     public void doOpponentMove(Display disp) {
-        Move aiMove = MiniMax.doMiniMax(disp.currentGame.currentBoard);
+        Move aiMove = ai.doMiniMax(disp.currentGame.currentBoard);
         if (aiMove.isPawnPromotion) {
             disp.attemptPawnPromotion("" + aiMove.getPromotionPiece());
         } else {

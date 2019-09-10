@@ -46,8 +46,8 @@ public class Game {
     public boolean attemptMove(int startIndex, int endIndex){
         List<Move> moves = currentBoard.generateMoves();
         for (Move m : moves){
-            if (m.changes.get(0).fenIndex == startIndex &&
-                m.changes.get(1).fenIndex == endIndex){
+            if (m.getStartIndex() == startIndex &&
+                m.getEndIndex() == endIndex){
                 currentBoard.applyMove(m);
 
                 if (currentBoard.promotingPawn() != null) {
@@ -69,8 +69,8 @@ public class Game {
                     currentBoard.forceFenUpdate(winnerUpdate);
                     System.out.println("It's a draw!");
                 }
-                fens.add(currentBoard.fen);
-                return true;   
+                fens.add(currentBoard.fen); 
+                return true;
             }
         }
         return false;
@@ -94,7 +94,7 @@ public class Game {
         //should probably move this logic into Board
         List<Move> moves = currentBoard.generateMovesCore(true); //param irrelevant since we're only getting pawn moves
         for (Move move : moves) {
-            if (move.changes.get(0).newValue == desired) {
+            if (move.getPromotionPiece() == desired) {
                 //currentBoard.forceFenUpdate(move);
                 //currentBoard.promotingPawn = false;
                 currentBoard.applyMove(move);

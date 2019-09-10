@@ -7,7 +7,6 @@ public class Board {
     String fen; // the fen for this board
     String oldFen; // the immediately previous fen
     String oldOldFen; // fen before that one
-    //boolean promotingPawn; // true if a pawn is being promoted
     
     /**
      * Creates a new Board using the given fen
@@ -15,7 +14,6 @@ public class Board {
      */
     public Board(String startFen){
         this.fen = startFen;
-        //promotingPawn = false;
     }
     
     /**
@@ -26,7 +24,6 @@ public class Board {
         Board copy = new Board(fen);
         copy.oldFen = this.oldFen;
         copy.oldOldFen = this.oldOldFen;
-        //copy.promotingPawn = this.promotingPawn;
         return copy;
     }
     
@@ -75,54 +72,24 @@ public class Board {
     }
     
     /**
-     * Applies a move to the board, skipping the pawn promotion test.
-     * This is used when testing hypothetical moves, since we don't want
-     * such moves to accidently trigger the pawn promotion UI.
+     * Applies a move to the board
      * @param m The move to be applied
      */
-    public void applyMoveSPP(Move m){
-        String workingFen = fen;
+    public void applyMove(Move m){
+        //String workingFen = fen;
         //apply updates
+        /*
         for (BoardUpdate b : m.changes){
             String preceding = workingFen.substring(0, b.fenIndex);
             String following = workingFen.substring(b.fenIndex + 1, 74);
             workingFen = preceding + b.newValue + following;
         }
+        */
         oldOldFen = oldFen;
         oldFen = fen;
-        fen = workingFen;
-    }
-    
-    /**
-     * Applies a move to the board
-     * @param m The move to be applied
-     */
-    public void applyMove(Move m){
-        if (!m.isPawnPromotion) {
-            //check if pawn will need to promote after move
-            boolean shouldPromotePawnNext = false;
-            if (m.changes.size() > 1){ // necessary?
-                char piece = Character.toLowerCase(m.getPieceMoving());
-                Position endPos = position(m.getEndIndex());
-                if ((endPos.y == 1 || endPos.y == 8) && piece == 'p'){
-                    
-                    shouldPromotePawnNext = true;
-                    //remove turn update
-                    Iterator<BoardUpdate> itr = m.changes.iterator(); //new
-                    while (itr.hasNext()){
-                        if (itr.next().fenIndex == 65){
-                            itr.remove();
-                            break;
-                        }
-                    }
-                }
-            }
-            //promotingPawn = shouldPromotePawnNext;
-            
-            // can probably move applyMoveSPP logic here
-            // and deprecate applyMoveSPP now
-        }
-        applyMoveSPP(m);
+        //fen = workingFen;
+        
+        fen = m.applyToFen(fen);
     }
     
     /**
@@ -187,7 +154,6 @@ public class Board {
      * @return "white", "black" or null
      */
     public String promotingPawn() {
-        //boolean yup = false;
         for (int i = 0; i < 8; i++) {
             if (fen.charAt(i) == 'P') {
                 return "black";
@@ -208,8 +174,7 @@ public class Board {
      * @return true if move puts them in check. else false
      */
     public boolean movePutsPlayerInCheck(String player, Move m) {
-        //applyMoveSPP(m); // this is the cause of my woes
-        applyMove(m); // lol fixed?
+        applyMove(m);
         boolean check = playerInCheck(player);
         undoMove();
         return check;
@@ -225,26 +190,26 @@ public class Board {
         String trueTurn = turn();
         char king;
         Move switchTurn = new Move();
-        if (player == "white"){
-            switchTurn.addChange(65, 'b');
+        if ("white".equals(player)){
+            switchTurn.addChange(FenUtility.TURN, 'b');
             king = 'k';
         } else {
-            switchTurn.addChange(65, 'w');
+            switchTurn.addChange(FenUtility.TURN, 'w');
             king = 'K';
         }
         forceFenUpdate(switchTurn);
         int kingIndex = -1; //initialized so compiler will shut up
-        for (int i = 0; i < 64; i++){
+        for (int i = FenUtility.BOARD_START; i <= FenUtility.BOARD_END; i++){
             if (fen.charAt(i) == king){
                 kingIndex = i;
                 break;
             }
         }
         Move switchTurnBack = new Move();
-        switchTurnBack.addChange(65, trueTurn.charAt(0));
+        switchTurnBack.addChange(FenUtility.TURN, trueTurn.charAt(0));
         List<Move> movesList = generateMovesCore(true);
         for (Move m : movesList){
-            if (m.changes.get(1).fenIndex == kingIndex){
+            if (m.getEndIndex() == kingIndex){
                 forceFenUpdate(switchTurnBack);
                 return true;
             }
@@ -263,7 +228,7 @@ public class Board {
         String currentPlayer = turn();
         List<Move> movesList = generateMoves();
         for (Move m : movesList){
-            applyMoveSPP(m);
+            applyMove(m);
             if (!playerInCheck(currentPlayer)){
                 undoMove();
                 return false;
@@ -304,7 +269,7 @@ public class Board {
         int wob = 0; // white on black
         int bow = 0; // black on white
         int bob = 0; // black on black
-        for (int i = 0; i < 63; i++){
+        for (int i = FenUtility.BOARD_START; i <= FenUtility.BOARD_END; i++){
             char c = fen.charAt(i);
             if (c == 'p' || c == 'P' || c == 'r' || c == 'R' || c == 'Q' || c == 'q'){
                 return false;
@@ -348,11 +313,7 @@ public class Board {
      * @param m The move containing the changes
      */
     public void forceFenUpdate(Move m){
-        for (BoardUpdate b : m.changes){
-            String preceding = fen.substring(0, b.fenIndex);
-            String following = fen.substring(b.fenIndex + 1, 74);
-            fen = preceding + b.newValue + following;
-        }
+        fen = m.applyToFen(fen);
     }
     
     /**
@@ -376,13 +337,13 @@ public class Board {
         addKingMoveIfValid(moves, i, new Position(pos.y - 1, pos.x + 1));
         addKingMoveIfValid(moves, i, new Position(pos.y, pos.x + 1));
         if (turn().equals("white")){
-            leftRookHasMoved = 66; //fen indexes
-            kingHasMoved = 67;
-            rightRookHasMoved = 68;
+            leftRookHasMoved = FenUtility.WHITE_LEFT_ROOK_HAS_MOVED;
+            kingHasMoved = FenUtility.WHITE_KING_HAS_MOVED;
+            rightRookHasMoved = FenUtility.WHITE_RIGHT_ROOK_HAS_MOVED;
         } else {
-            leftRookHasMoved = 69;
-            kingHasMoved = 70;
-            rightRookHasMoved = 71;
+            leftRookHasMoved = FenUtility.BLACK_LEFT_ROOK_HAS_MOVED;
+            kingHasMoved = FenUtility.BLACK_KING_HAS_MOVED;
+            rightRookHasMoved = FenUtility.BLACK_RIGHT_ROOK_HAS_MOVED;
         }
         //castling left
         if (fen.charAt(kingHasMoved) == 'f' && fen.charAt(leftRookHasMoved) == 'f'){
@@ -510,15 +471,15 @@ public class Board {
         if (Character.toLowerCase(fen.charAt(i)) == 'r'){
             if (turn().equals("white")){
                 if (i == 0){
-                    m.addChange(66, 't');
+                    m.addChange(FenUtility.WHITE_LEFT_ROOK_HAS_MOVED, 't');
                 } else if (i == 7){
-                    m.addChange(68, 't');
+                    m.addChange(FenUtility.WHITE_RIGHT_ROOK_HAS_MOVED, 't');
                 }
             } else {
                 if (i == 56){
-                    m.addChange(69, 't');
+                    m.addChange(FenUtility.BLACK_LEFT_ROOK_HAS_MOVED, 't');
                 } else if (i == 63){
-                    m.addChange(71, 't');
+                    m.addChange(FenUtility.BLACK_RIGHT_ROOK_HAS_MOVED, 't');
                 }
             }
         }
@@ -633,13 +594,13 @@ public class Board {
             m.addChange(i, '-');
             m.addChange(fenIndex(doubleJump), fen.charAt(i));
             m.addChange(turnChange());
-            m.addChange(72, (char) (doubleJump.y + 48)); //Add 48 to get a proper char cast
-            m.addChange(73, (char) (doubleJump.x + 48)); //ie to get '1' from 1 (because ascii)
+            m.addChange(FenUtility.DOUBLE_JUMPER_Y, (char) (doubleJump.y + 48)); //Add 48 to get a proper char cast
+            m.addChange(FenUtility.DOUBLE_JUMPER_X, (char) (doubleJump.x + 48)); //ie to get '1' from 1 (because ascii)
             moves.add(m);
         }
         //where the piece last turn double jumped to (or (0, 0) if there was no double jump last turn)
-        doubleJump = new Position(Character.getNumericValue(fen.charAt(72)),
-                                  Character.getNumericValue(fen.charAt(73)));
+        doubleJump = new Position(Character.getNumericValue(fen.charAt(FenUtility.DOUBLE_JUMPER_Y)),
+                                  Character.getNumericValue(fen.charAt(FenUtility.DOUBLE_JUMPER_X)));
         //en passant
         if (doubleJump.y == pos.y && Math.abs(pos.x - doubleJump.x) == 1 && 
                                 owner(fenIndex(doubleJump)).equals(enemy)){
@@ -657,38 +618,31 @@ public class Board {
      * Scans the board for a pawn being promoted, and adds
      * the available pawn promotion moves to the moves list
      * @param moves The moves list to add to
-     * @pre board state must be valid (ie no two pawns both promoting)
+     * @pre board state must be valid (i.e. exactly one pawn to promote)
      */
     public void addPawnPromotionMoves(ArrayList<Move> moves) {
         char[] upgrades = {'r', 'b', 'h', 'q'};
         int pawnIndex = -1;
         //scan bottom or top row to find pawn
         if (turn().equals("black")) {
-            for (int i = 0; i < 8; i++){
+            for (int i = FenUtility.BOARD_START; i <= FenUtility.BOARD_FIRST_ROW_END; i++){
                 if (fen.charAt(i) == 'P') {
                     pawnIndex = i;
                     break;
                 }
             }
-            try {
-                for (int i = 0; i < upgrades.length; i++) {
-                    Move m = new Move(true);
-                    m.addChange(pawnIndex, Character.toUpperCase(upgrades[i]));
-                    m.addChange(turnChange());
-                    noDoubleJumpers(m);
-                    moves.add(m);
-                }
-            } catch (IllegalArgumentException e) {
-                System.out.println(fen);
-                throw e;
+            for (int i = 0; i < upgrades.length; i++) {
+                Move m = new Move(true);
+                m.addChange(pawnIndex, Character.toUpperCase(upgrades[i]));
+                m.addChange(turnChange());
+                noDoubleJumpers(m);
+                moves.add(m);
             }
         } else {
-            if (pawnIndex == -1){
-                for (int i = 56; i < 64; i++){
-                    if (fen.charAt(i) == 'p') {
-                        pawnIndex = i;
-                        break;
-                    }
+            for (int i = FenUtility.BOARD_LAST_ROW_START; i <= FenUtility.BOARD_END; i++){
+                if (fen.charAt(i) == 'p') {
+                    pawnIndex = i;
+                    break;
                 }
             }
             for (int i = 0; i < upgrades.length; i++) {
@@ -774,7 +728,8 @@ public class Board {
      * @param endPos
      */
     public void addKingMoveIfValid(ArrayList<Move> moves, int i, Position endPos){
-        int hasMovedIndex = turn().equals("white")? 67 : 70;
+        int hasMovedIndex = 
+                turn().equals("white")? FenUtility.WHITE_KING_HAS_MOVED : FenUtility.BLACK_KING_HAS_MOVED;
         if (inBounds(endPos) && !(turn().equals(owner(endPos)))){
             Move m = createStandardMove(i, endPos);
             m.addChange(hasMovedIndex, 't');
@@ -793,7 +748,7 @@ public class Board {
         } else {
             newTurn = 'w';
         }
-        return new BoardUpdate(65, newTurn);
+        return new BoardUpdate(FenUtility.TURN, newTurn);
     }
     
     /**
@@ -801,8 +756,8 @@ public class Board {
      * @param m
      */
     public void noDoubleJumpers(Move m){
-        m.addChange(new BoardUpdate(73, '0'));
-        m.addChange(new BoardUpdate(72, '0'));
+        m.addChange(new BoardUpdate(FenUtility.DOUBLE_JUMPER_Y, '0'));
+        m.addChange(new BoardUpdate(FenUtility.DOUBLE_JUMPER_X, '0'));
     }
     
     /**
@@ -829,7 +784,7 @@ public class Board {
      * @return "white or "black"
      */
     public String turn() {
-        if (fen.charAt(65) == 'w') {
+        if (fen.charAt(FenUtility.TURN) == 'w') {
             return "white";
         } else {
             return "black";

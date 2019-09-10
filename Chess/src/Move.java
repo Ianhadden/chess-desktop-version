@@ -3,7 +3,7 @@ import java.util.ArrayList;
 
 public class Move {
     
-    public ArrayList<BoardUpdate> changes;
+    private ArrayList<BoardUpdate> changes;
     public boolean isPawnPromotion;
     
     public Move(){
@@ -33,6 +33,19 @@ public class Move {
         }
         BoardUpdate b = new BoardUpdate(fenIndex, newValue);
         changes.add(b);
+    }
+    
+    /**
+     * Applies this move to the given fen
+     * @param fen The fen to apply to
+     * @return The fen resulting from the move
+     */
+    public String applyToFen(String fen) {      
+        char[] charFen = fen.toCharArray();
+        for (BoardUpdate b : changes) {
+            charFen[b.fenIndex] = b.newValue;
+        }
+        return new String(charFen);
     }
     
     /**
