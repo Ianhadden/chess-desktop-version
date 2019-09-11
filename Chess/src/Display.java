@@ -773,7 +773,9 @@ public class Display implements ActionListener {
         } else if (!inProgress()){
             stuffHolder.sideButtons.turnIndicator.setText("<html>&nbsp;&nbsp;It's a<br>&nbsp;&nbsp;draw!<html>");
         }
-        frame.repaint();
+        //frame.revalidate();
+        //frame.repaint(0);
+        frame.paint(frame.getGraphics());
     }
     
     /**

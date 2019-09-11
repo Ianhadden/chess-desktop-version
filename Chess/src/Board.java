@@ -208,7 +208,11 @@ public class Board {
         Move switchTurnBack = new Move();
         switchTurnBack.addChange(FenUtility.TURN, trueTurn.charAt(0));
         List<Move> movesList = generateMovesCore(true);
-        for (Move m : movesList){
+        //pawn promotions don't attack the king
+        if (movesList.size() > 0 && movesList.get(0).isPawnPromotion) {
+            return false;
+        }
+        for (Move m : movesList) {
             if (m.getEndIndex() == kingIndex){
                 forceFenUpdate(switchTurnBack);
                 return true;
